@@ -144,7 +144,7 @@ export const MOVIES: Movie[] = [
             {
                 title: "Five Nights At Freddy's 2",
                 imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSf-RYGDp-9XprIb9yX1zLUOy6kpm8iUOuHbw&s",
-                link: "https://drive.google.com/file/d/16qbI4SsI7sgv2osM_r6bGkNoj1gtjX6T/view?usp=sharing",
+                link: "https://drive.google.com/file/d/1nTRYH1tf1MoNwxxNUtcTg4VH0njDii7M/view?usp=sharing",
                 description: "One year has passed since the supernatural nightmare at Freddy Fazbear's Pizza. Former security guard Mike has kept the truth from his 11-year-old sister, Abby, concerning the fate of her animatronic friends.",
                 year: "2025"
             },
