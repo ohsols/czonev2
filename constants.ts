@@ -881,8 +881,8 @@ export const PARTNERS_DATA: PartnerItem[] = [
     name: "カービィアーケード", 
     owner: "SAM", 
     url: "https://sites.google.com/view/fus3-bomb/page", 
-    banner: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800",
-    avatar: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?w=200"
+    banner: "https://cdn.discordapp.com/attachments/1470419670287908884/1481117512157368350/kirby-4-logo_1.webp?ex=69b225ac&is=69b0d42c&hm=432856deb025909c139b9f32d04c2574d933091fa717959f96d5b17c439b62a1&",
+    avatar: "https://media.discordapp.net/attachments/1470419670287908884/1481117512644038767/unnamed_1.gif?ex=69b225ac&is=69b0d42c&hm=2a5455ba21785f279cfbf35310dfed49d9060cb5b8942882c7301eb29dcf4ceb&="
   }
 ];
 
