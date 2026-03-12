@@ -58,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, onSelect, logoUrl, on
             />
           </div>
           <div className="mt-4 text-center">
-            <h2 className="text-sm font-black italic uppercase tracking-tighter text-white">CHILLZONE</h2>
+            <h2 className="text-sm font-black italic uppercase tracking-tighter text-white">Czone</h2>
           </div>
           <input 
             type="file" 
