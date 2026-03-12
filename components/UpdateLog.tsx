@@ -7,7 +7,21 @@ interface UpdateLogProps {
   onClose: () => void;
 }
 
-const UPDATES = [];
+const UPDATES = [
+  {
+    version: "1.0.0",
+    date: "2026-03-10",
+    changes: ["Site Release 🎉"]
+  }
+];
+
+const getDaysAgo = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffTime = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays === 0 ? "Today" : `${diffDays} days ago`;
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -56,7 +70,7 @@ const UpdateLog: React.FC<UpdateLogProps> = ({ onClose }) => {
               <span className="text-[#ff2644] font-bold text-xs bg-[#ff2644]/10 px-2 py-0.5 rounded-full border border-[#ff2644]/20">v{update.version}</span>
               <span className="text-[10px] text-[#52525b] font-mono flex items-center gap-1">
                 <Calendar size={10} />
-                {update.date}
+                {getDaysAgo(update.date)}
               </span>
             </div>
             <ul className="space-y-1">
