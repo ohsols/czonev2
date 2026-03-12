@@ -45,5 +45,5 @@ The site is automatically built and deployed via GitHub Actions to Cloudflare Pa
 ---
 
 <div align="center">
-  <sub>Made with ❤️ by **Sols**</sub>
+  <sub>Made with ❤️ by Sols</sub>
 </div>
