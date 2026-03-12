@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, onSelect, logoUrl, on
   ];
 
   return (
-    <aside className="w-64 bg-black border-r border-white/10 flex flex-col p-6 shrink-0 transition-all duration-500 z-50 h-full">
+    <aside className="w-64 bg-black border-r border-white/10 flex flex-col p-6 shrink-0 transition-all duration-500 z-50 h-full pointer-events-auto">
       <div className="mb-10 flex flex-col items-center justify-center">
         <motion.div 
           whileHover={{ scale: 1.05, rotate: 5 }}
@@ -71,20 +71,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, onSelect, logoUrl, on
         </motion.div>
       </div>
       
-      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-2">
+      <nav className="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-2 pointer-events-auto">
         {navItems.map((item, idx) => {
           const Icon = item.icon;
           const isActive = activeCategory === item.id;
           return (
-            <motion.button
+            <button
               key={item.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              whileHover={{ scale: 1.02, x: 4 }}
-              whileTap={{ scale: 0.98 }}
               onClick={() => onSelect(item.id)}
-              className={`relative w-full flex items-center justify-center md:justify-start gap-4 p-4 rounded-xl transition-colors duration-300 font-bold uppercase tracking-widest text-xs ${
+              className={`relative z-50 w-full flex items-center justify-center md:justify-start gap-4 p-4 rounded-xl transition-colors duration-300 font-bold uppercase tracking-widest text-xs ${
                 isActive 
                   ? 'bg-[#ff2644] text-white' 
                   : 'text-[#52525b] hover:bg-[#1c1c1f] hover:text-white'
@@ -93,14 +88,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, onSelect, logoUrl, on
               <Icon size={20} className="relative z-10" />
               <span className="relative z-10">{item.label}</span>
               {isActive && (
-                <motion.div
-                  layoutId="sidebar-active-indicator"
+                <div
                   className="absolute inset-0 bg-[#ff2644] rounded-xl z-0"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
-            </motion.button>
+            </button>
           );
         })}
       </nav>
