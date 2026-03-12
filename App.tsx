@@ -66,6 +66,13 @@ const DonatePage = () => {
 };
 
 const App: React.FC = () => {
+  useEffect(() => {
+    const navigationEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+    if (navigationEntries.length > 0 && navigationEntries[0].type === "reload") {
+      window.location.href = "https://chillz0ne.dev";
+    }
+  }, []);
+
   const [customLogo, setCustomLogo] = useState<string>(DEFAULT_LOGO);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateLogOpen, setIsUpdateLogOpen] = useState(false);
