@@ -25,6 +25,46 @@ const DiscordIcon = ({ size = 20, className = "" }: { size?: number, className?:
   </svg>
 );
 
+const DonatePage = () => {
+  useEffect(() => {
+    const element = document.getElementById('donations');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
+  return (
+    <div className="py-12">
+      <section id="donations" className="bg-black rounded-[48px] p-12 md:p-20 border border-[#1c1c1f] text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2000')] bg-cover bg-center opacity-10 blur-sm"></div>
+        <div className="relative z-10">
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} className="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-8 border border-[#ff2644]/30 shadow-[0_0_40px_rgba(255,38,68,0.3)]">
+            <Activity size={48} className="text-[#ff2644]" />
+          </motion.div>
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-8xl font-black uppercase italic tracking-tighter text-white mb-8">Donate</motion.h1>
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-[#a1a1aa] text-xl max-w-2xl mx-auto mb-12 font-medium">Click Which Ever Donation App U Want To Donate On</motion.p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <motion.a whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} href="https://cash.app/$7yari" target="_blank" rel="noopener noreferrer" className="bg-black border border-[#1c1c1f] p-8 rounded-3xl hover:border-[#00d632] transition-all duration-300 group flex flex-col items-center text-center">
+              <img src="https://cdn.simpleicons.org/cashapp/white" alt="Cash App" className="h-12 w-12 mb-4 object-contain" referrerPolicy="no-referrer" />
+              <div className="text-3xl font-black text-white mb-2">CASH APP</div>
+              <p className="text-[#52525b] text-xs font-bold uppercase tracking-widest group-hover:text-[#00d632]">Instant Transfer</p>
+            </motion.a>
+            <motion.a whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} href="https://www.venmo.com/u/ohsols" target="_blank" rel="noopener noreferrer" className="bg-[#008CFF] border border-[#008CFF] p-8 rounded-3xl hover:bg-[#008CFF]/90 transition-all duration-300 shadow-[0_0_30px_rgba(0,140,255,0.4)] flex flex-col items-center text-center">
+              <img src="https://cdn.simpleicons.org/venmo/white" alt="Venmo" className="h-12 w-12 mb-4 object-contain" referrerPolicy="no-referrer" />
+              <div className="text-3xl font-black text-white mb-2">VENMO</div>
+              <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Mobile Payment</p>
+            </motion.a>
+            <motion.a whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} href="https://paypal.me/ohsols" target="_blank" rel="noopener noreferrer" className="bg-black border border-[#1c1c1f] p-8 rounded-3xl hover:border-[#0070ba] transition-all duration-300 group flex flex-col items-center text-center">
+              <img src="https://cdn.simpleicons.org/paypal/white" alt="PayPal" className="h-12 w-12 mb-4 object-contain" referrerPolicy="no-referrer" />
+              <div className="text-3xl font-black text-white mb-2">PAYPAL</div>
+              <p className="text-[#52525b] text-xs font-bold uppercase tracking-widest group-hover:text-[#0070ba]">Direct Transfer</p>
+            </motion.a>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [customLogo, setCustomLogo] = useState<string>(DEFAULT_LOGO);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -227,38 +267,8 @@ const App: React.FC = () => {
                       </section>
                     </motion.div>
                   } />
-                  <Route path="/donate" element={
-                    <div className="py-12">
-                      <section className="bg-black rounded-[48px] p-12 md:p-20 border border-[#1c1c1f] text-center relative overflow-hidden">
-                        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2000')] bg-cover bg-center opacity-10 blur-sm"></div>
-                        <div className="relative z-10">
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} className="w-24 h-24 bg-black rounded-full flex items-center justify-center mx-auto mb-8 border border-[#ff2644]/30 shadow-[0_0_40px_rgba(255,38,68,0.3)]">
-                            <Activity size={48} className="text-[#ff2644]" />
-                          </motion.div>
-                          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-8xl font-black uppercase italic tracking-tighter text-white mb-8">Donate</motion.h1>
-                          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-[#a1a1aa] text-xl max-w-2xl mx-auto mb-12 font-medium">Click Which Ever Donation App U Want To Donate On</motion.p>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                            <motion.a whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} href="https://cash.app/$7yari" target="_blank" rel="noopener noreferrer" className="bg-black border border-[#1c1c1f] p-8 rounded-3xl hover:border-[#00d632] transition-all duration-300 group flex flex-col items-center text-center">
-                              <img src="https://cdn.simpleicons.org/cashapp/white" alt="Cash App" className="h-12 w-12 mb-4 object-contain" referrerPolicy="no-referrer" />
-                              <div className="text-3xl font-black text-white mb-2">CASH APP</div>
-                              <p className="text-[#52525b] text-xs font-bold uppercase tracking-widest group-hover:text-[#00d632]">Instant Transfer</p>
-                            </motion.a>
-                            <motion.a whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} href="https://www.venmo.com/u/ohsols" target="_blank" rel="noopener noreferrer" className="bg-[#008CFF] border border-[#008CFF] p-8 rounded-3xl hover:bg-[#008CFF]/90 transition-all duration-300 shadow-[0_0_30px_rgba(0,140,255,0.4)] flex flex-col items-center text-center">
-                              <img src="https://cdn.simpleicons.org/venmo/white" alt="Venmo" className="h-12 w-12 mb-4 object-contain" referrerPolicy="no-referrer" />
-                              <div className="text-3xl font-black text-white mb-2">VENMO</div>
-                              <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Mobile Payment</p>
-                            </motion.a>
-                            <motion.a whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} href="https://paypal.me/ohsols" target="_blank" rel="noopener noreferrer" className="bg-black border border-[#1c1c1f] p-8 rounded-3xl hover:border-[#0070ba] transition-all duration-300 group flex flex-col items-center text-center">
-                              <img src="https://cdn.simpleicons.org/paypal/white" alt="PayPal" className="h-12 w-12 mb-4 object-contain" referrerPolicy="no-referrer" />
-                              <div className="text-3xl font-black text-white mb-2">PAYPAL</div>
-                              <p className="text-[#52525b] text-xs font-bold uppercase tracking-widest group-hover:text-[#0070ba]">Direct Transfer</p>
-                            </motion.a>
-                          </div>
-                        </div>
-                      </section>
-                    </div>
-                  } />
-                  <Route path="/" element={<Navigate to="/movies" replace />} />
+                  <Route path="/donate" element={<DonatePage />} />
+                  <Route path="/" element={<Navigate to="/donate" replace />} />
                 </Routes>
             </div>
           </div>
