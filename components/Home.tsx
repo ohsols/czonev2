@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Globe, LayoutGrid, Gamepad2, Shield } from 'lucide-react';
+import { Search, Globe, LayoutGrid, WifiOff, Shield } from 'lucide-react';
 import { Category } from '../types';
 
 interface HomeProps {
@@ -57,8 +57,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onSearch }) => {
     },
     {
       title: "Offline Mode",
-      desc: "Use the site online and play games at least once when online to use the site offline.",
-      icon: <Gamepad2 className="text-accent" size={32} />,
+      desc: "Use the site online at least once to use the site offline.",
+      icon: <WifiOff className="text-accent" size={32} />,
     },
     {
       title: "Tab Cloaking",

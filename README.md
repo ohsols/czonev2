@@ -13,7 +13,7 @@
 
 ## What is ChillZone?
 
-ChillZone is a personal media library and entertainment hub. Browse movies, TV shows, anime, manga, listen to music, find proxies, and soon games all in one sleek dark interface.
+ChillZone is a personal media library and entertainment hub. Browse movies, TV shows, anime, manga, listen to music, and find proxies all in one sleek dark interface.
 
 ## Features
 
@@ -21,7 +21,6 @@ ChillZone is a personal media library and entertainment hub. Browse movies, TV s
 - 📺 **TV Shows** — Full series library
 - ✨ **Anime** — Curated anime collection
 - 📖 **Manga** — Complete manga archive
-- 🎮 **Games** — Embedded browser games
 - 🎵 **Music** — Built-in music player
 - 🌐 **Proxies** — Proxy directory
 - 🤝 **Partners** — Partner sites

@@ -39,7 +39,7 @@ export interface ProxyItem {
   name?: string;
 }
 
-export type Category = 'home' | 'movies' | 'tv shows' | 'anime' | 'manga' | 'proxies' | 'partners' | 'dev' | 'support' | 'donate' | 'games' | 'apps' | 'browser' | 'settings' | 'music';
+export type Category = 'home' | 'movies' | 'tv shows' | 'anime' | 'manga' | 'proxies' | 'partners' | 'dev' | 'support' | 'donate' | 'apps' | 'browser' | 'settings' | 'music';
 
 export interface Anime {
   title: string;
@@ -62,16 +62,3 @@ export interface StaffMember {
   link?: string; // Social link
 }
 
-export interface Game {
-  id: string;
-  title: string;
-  image: string;
-  link?: string;
-  desc?: string;
-  platform?: string;
-  system?: string;
-  year?: string;
-  color?: string;
-  icon?: string;
-  iconColor?: string;
-}

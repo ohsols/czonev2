@@ -8,8 +8,7 @@ import UpdateLog from './components/UpdateLog';
 import DateTimeWidget from './components/DateTimeWidget';
 import CustomCursor from './components/CustomCursor';
 import { Category, LibraryItem, StaffMember } from './types';
-import { MOVIES_DATA, ANIME_DATA, MANGA_DATA, TV_DATA, STAFF_DATA, PARTNERS_DATA, PROXIES_DATA, GAMES_DATA } from './constants';
-import GamesSection from './components/GamesSection';
+import { MOVIES_DATA, ANIME_DATA, MANGA_DATA, TV_DATA, STAFF_DATA, PARTNERS_DATA, PROXIES_DATA } from './constants';
 import { getWikiIntelligence } from './services/gemini';
 import { useLanguage } from './context/LanguageContext';
 import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, MessageSquare, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit } from 'lucide-react';
@@ -302,7 +301,6 @@ const App: React.FC = () => {
                     {activeCategory === 'tv shows' && <LibrarySection title={t('TV Shows')} items={TV_DATA} category="tv" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />}
                     {activeCategory === 'anime' && <LibrarySection title={t('Animes')} items={ANIME_DATA} category="anime" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />}
                     {activeCategory === 'manga' && <LibrarySection title={t('Mangas')} items={MANGA_DATA} category="manga" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />}
-                    {activeCategory === 'games' && <GamesSection games={GAMES_DATA} onOpenDetails={(game) => handleOpenDetails({ t: game.title, l: game.link, img: game.image, desc: game.desc }, 'games')} />}
                     {activeCategory === 'music' && <MusicPlayer />}
                     
                     {activeCategory === 'proxies' && (
