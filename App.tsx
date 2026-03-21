@@ -10,7 +10,7 @@ import { Category, LibraryItem, StaffMember } from './types';
 import { MOVIES_DATA, ANIME_DATA, MANGA_DATA, TV_DATA, STAFF_DATA, PARTNERS_DATA, PROXIES_DATA } from './constants';
 import { getWikiIntelligence } from './services/gemini';
 import { useLanguage } from './context/LanguageContext';
-import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, MessageSquare, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit } from 'lucide-react';
+import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, MessageSquare, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit, ChevronDown } from 'lucide-react';
 
 const DEFAULT_LOGO = "https://lh7-rt.googleusercontent.com/sitesz/AClOY7psM7n5cC2oRAQVLVss3LsgYFKWwE-KzTjGQvDYtnnp1f1j-Szl1OH6r1pZTXpsw0t_1es0N4P9E2cBl4Oqs-lOwNJdAt3H5CiGxGZKfBTzaYq_ybiI1qd2dWXWu_GRWMqLDD_3BL9tkNhJBNJhjBuuQWyvP1B19h6v0fblyHBwfxs-94c7?key=IannGxLsV9P5UfJ0NHPqqQ";
 
@@ -51,7 +51,7 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [proxySearch, setProxySearch] = useState('');
   const [customLogo, setCustomLogo] = useState<string>(DEFAULT_LOGO);
-  const [selectedItem, setSelectedItem] = useState<{item: LibraryItem, category: string} | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{item: LibraryItem, category: string, showPlayer: boolean} | null>(null);
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateLogOpen, setIsUpdateLogOpen] = useState(false);
@@ -67,13 +67,27 @@ const App: React.FC = () => {
     document.documentElement.dataset.theme = savedTheme;
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedItem?.showPlayer) {
+          setSelectedItem({...selectedItem, showPlayer: false});
+        } else if (selectedItem) {
+          setSelectedItem(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItem]);
+
   const handleUpdateLogo = (newLogoUrl: string) => {
     setCustomLogo(newLogoUrl);
     localStorage.setItem('chillzone_custom_logo', newLogoUrl);
   };
 
   const handleOpenDetails = (item: LibraryItem, category: string) => {
-    setSelectedItem({ item, category });
+    setSelectedItem({ item, category, showPlayer: false });
     setWikiData(null);
   };
 
@@ -351,18 +365,13 @@ const App: React.FC = () => {
                           className="grid grid-cols-1 md:grid-cols-2 gap-6"
                         >
                           {PARTNERS_DATA.map((p, idx) => (
-                            <motion.a 
+                            <motion.div 
                               variants={{
                                 hidden: { opacity: 0, y: 10 },
                                 show: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } }
                               }}
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
                               key={idx} 
-                              href={p.url || '#'} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="relative overflow-hidden bg-bg p-8 rounded-[32px] border border-surface-hover flex items-center group transition-all duration-500 hover:border-accent/40"
+                              className="relative overflow-hidden bg-bg p-8 rounded-[32px] border border-surface-hover flex flex-col gap-4 group transition-all duration-500 hover:border-accent/40"
                             >
                               {p.banner && (
                                 <div className="absolute inset-0">
@@ -380,9 +389,26 @@ const App: React.FC = () => {
                                     <p className="text-text-muted text-[9px] font-bold uppercase tracking-[0.2em]">OPERATED BY <TranslatedText text={p.owner} /></p>
                                   </div>
                                 </div>
-                                {p.url && <ExternalLink size={20} className="text-text-secondary group-hover:text-accent" />}
+                                <div className="relative">
+                                  {p.urls ? (
+                                    <div className="group/menu relative">
+                                      <button className="text-text-secondary hover:text-accent p-2 bg-bg/50 rounded-lg border border-white/5 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                                        Links <ChevronDown size={12} />
+                                      </button>
+                                      <div className="absolute right-0 top-full mt-2 w-40 bg-bg border border-surface-hover rounded-xl shadow-xl p-2 z-20 opacity-0 group-hover/menu:opacity-100 transition-opacity pointer-events-none group-hover/menu:pointer-events-auto">
+                                        {p.urls.map((u, i) => (
+                                          <a key={i} href={u.url} target="_blank" rel="noopener noreferrer" className="block text-text-secondary hover:text-accent p-2 hover:bg-surface-hover rounded-lg text-[10px] font-bold uppercase tracking-widest">
+                                            {u.name}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    p.url && <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-accent p-2"><ExternalLink size={20} /></a>
+                                  )}
+                                </div>
                               </div>
-                            </motion.a>
+                            </motion.div>
                           ))}
                         </motion.div>
                       </motion.div>
@@ -572,15 +598,35 @@ const App: React.FC = () => {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-5xl bg-bg border border-white/10 rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
+              className={`relative w-full ${selectedItem.showPlayer ? 'max-w-none h-full' : 'max-w-5xl max-h-[90vh]'} bg-bg border border-white/10 rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row`}
             >
-              <button onClick={() => setSelectedItem(null)} className="absolute top-8 right-8 z-50 bg-bg/40 hover:bg-accent p-4 rounded-2xl transition-all duration-300 border border-white/5"><X size={24} /></button>
-              <div className="w-full md:w-2/5 aspect-[2/3] md:h-auto relative overflow-hidden group/modal-img bg-bg shrink-0">
-                <img src={selectedItem.item.img} className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover/modal-img:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-              </div>
-              <div className="flex-1 p-10 md:p-16 flex flex-col overflow-y-auto custom-scrollbar">
-                <div className="mb-auto">
+              {selectedItem.showPlayer ? null : (
+                <button onClick={() => setSelectedItem(null)} className="absolute top-8 right-8 z-50 bg-bg/40 hover:bg-accent p-4 rounded-2xl transition-all duration-300 border border-white/5"><X size={24} /></button>
+              )}
+              {selectedItem.showPlayer ? null : (
+                <div className="w-full md:w-2/5 aspect-[2/3] md:h-auto relative overflow-hidden group/modal-img bg-bg shrink-0">
+                  <img src={selectedItem.item.img} className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover/modal-img:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                </div>
+              )}
+              <div className={`flex-1 ${selectedItem.showPlayer ? 'p-0' : 'p-10 md:p-16'} flex flex-col overflow-y-auto custom-scrollbar`}>
+                {selectedItem.showPlayer ? (
+                  <div className="w-full h-full bg-black flex flex-col rounded-2xl overflow-hidden relative">
+                    <button 
+                      onClick={() => setSelectedItem({...selectedItem, showPlayer: false})}
+                      className="absolute top-4 left-4 z-50 bg-bg/40 hover:bg-accent p-4 rounded-2xl transition-all duration-300 border border-white/5 text-white"
+                    >
+                      <X size={24} />
+                    </button>
+                    <iframe 
+                      src={selectedItem.item.l ? selectedItem.item.l.replace('/view', '/preview') : ''}
+                      className="w-full h-full"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-auto">
                   <div className="flex items-center gap-4 mb-6"><span className="px-5 py-2 rounded-full bg-accent/10 border border-accent/30 text-accent text-[10px] font-black uppercase tracking-[0.25em] italic">{t('Record Sync Active')}</span></div>
                   <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter text-white leading-[0.85] mb-10"><TranslatedText text={selectedItem.item.t} /></h2>
                   
@@ -615,6 +661,19 @@ const App: React.FC = () => {
                       {isWikiLoading ? t('DECRYPTING WIKI...') : t('FETCH WIKI INTELLIGENCE')}
                     </motion.button>
                   )}
+                  
+                  {selectedItem.category === 'movie' && (
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setSelectedItem({...selectedItem, showPlayer: true})}
+                      className="w-full py-5 rounded-[2rem] font-black flex items-center justify-center gap-4 text-xs tracking-[0.4em] uppercase italic transition-all duration-500 shadow-xl bg-accent text-white hover:bg-accent/90"
+                    >
+                      <PlayCircle size={20} /> 
+                      {t('PLAY HERE')}
+                    </motion.button>
+                  )}
+
                   {selectedItem.item.links && selectedItem.item.links.length > 0 ? (
                     <div className="flex flex-col gap-3">
                       {selectedItem.item.links.map((link, idx) => (
@@ -651,7 +710,9 @@ const App: React.FC = () => {
                     </p>
                   )}
                 </div>
-              </div>
+              </>
+            )}
+          </div>
             </motion.div>
           </motion.div>
         )}

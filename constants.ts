@@ -874,8 +874,12 @@ export const PARTNERS_DATA: PartnerItem[] = [
     name: "カービィアーケード", 
     owner: "SAM", 
     url: "https://sites.google.com/view/fus3-bomb/page", 
-    banner: "https://media.discordapp.net/attachments/1470419670287908884/1481117512157368350/kirby-4-logo_1.webp?ex=69b3772c&is=69b225ac&hm=abe6ea3015093acc9bd10ceb4d0ff8b7cceac7a63b2005f81d408ae1fec650ea&=&format=webp&width=1214&height=449",
-    avatar: "https://media.discordapp.net/attachments/1470419670287908884/1481117512644038767/unnamed_1.gif?ex=69b3772c&is=69b225ac&hm=d8396d8e3883e8f4a96423776a8bddce1e8dfd60bbf1bb5d2f826d259c298dd3&="
+    urls: [
+      { name: "Google Sites", url: "https://sites.google.com/view/fus3-bomb/page" },
+      { name: "GitHub Pages", url: "https://mkplaza.github.io/" }
+    ],
+    banner: "https://preview.redd.it/what-are-your-favorite-meta-knight-battle-themes-and-v0-2rludfrd5hqb1.jpg?width=640&crop=smart&auto=webp&s=9a5cf8aac407cfafbcea666f0baca6293dfa2123",
+    avatar: "https://cdn.jsdelivr.net/gh/MKPlaza/MKPlaza.github.io@main/Meta_Knight_Logo.webp"
   }
 ];
 

@@ -30,6 +30,7 @@ export interface PartnerItem {
   name: string;
   owner: string;
   url?: string;
+  urls?: { name: string; url: string }[];
   banner?: string;
   avatar?: string;
 }
