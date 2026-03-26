@@ -1,5 +1,4 @@
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
@@ -112,6 +111,7 @@ async function startServer() {
   console.log(`Starting server in ${isProd ? 'production' : 'development'} mode...`);
 
   if (!isProd) {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -121,7 +121,7 @@ async function startServer() {
     // In production, serve static files from dist
     app.use(express.static('dist'));
     // Catch-all for SPA in production
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }

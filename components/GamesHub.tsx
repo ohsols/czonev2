@@ -124,18 +124,18 @@ const GameCard = ({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ y: -10 }}
-      className={`group relative rounded-2xl overflow-hidden flex flex-col border border-white/10 transition-all duration-500 bg-[#121212] ${
+      className={`group relative rounded-2xl overflow-hidden flex flex-col border border-white/10 transition-all duration-500 bg-[#121212] shrink-0 ${
         size === 'lg' ? 'w-80 h-[450px]' : size === 'sm' ? 'w-48 h-64' : 'w-64 h-80'
       }`}
     >
       {game.image && (
         <div 
-          className="absolute inset-0 bg-cover bg-center transition-all duration-700 opacity-40 group-hover:opacity-80 group-hover:scale-110 z-0" 
+          className="absolute inset-0 bg-cover bg-center transition-all duration-700 opacity-100 group-hover:scale-110 z-0" 
           style={{ backgroundImage: `url('${game.image}')` }}
         />
       )}
       
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent z-0 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/40 to-transparent z-0 pointer-events-none" />
 
       <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${game.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-20`} />
       
@@ -293,9 +293,9 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Hub Customization State
-  const [hubName, setHubName] = useState('THE VAULT');
+  const [hubName, setHubName] = useState('GAMES');
   const [userName, setUserName] = useState('Commander');
-  const [accentColor, setAccentColor] = useState('#FFCC00'); // Default Gold
+  const [accentColor, setAccentColor] = useState('#ff0000'); // Default Red
   const [featuredId, setFeaturedId] = useState('sonic-adventure');
   const [hubBackground, setHubBackground] = useState('');
 
@@ -303,7 +303,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
     platform: 'PC',
     system: 'Web',
     year: new Date().getFullYear().toString(),
-    color: 'from-blue-600 to-indigo-600',
+    color: 'from-red-600 to-red-900',
     icon: 'fa-gamepad',
     iconColor: 'text-white'
   });
@@ -433,7 +433,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
               <div className="h-10 w-px bg-white/10 mx-2"></div>
               <div className="flex gap-6">
                 <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Vault Size</span>
+                  <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Games Size</span>
                   <span className="text-lg font-black text-white">{allGames.length}</span>
                 </div>
                 <div className="flex flex-col">
@@ -484,7 +484,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
       </div>
 
       {/* Controls Bar */}
-      <div className="sticky top-0 z-40 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5 px-8 py-6 mb-12">
+      <div className="relative z-40 bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-white/5 px-8 py-6 mb-12">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-center justify-between">
           <div className="flex items-center gap-4 w-full md:w-auto">
             <div className="flex items-center gap-4 mr-4">
@@ -495,7 +495,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 w-4 h-4 transition-colors group-focus-within:text-accent" />
               <input 
                 type="text" 
-                placeholder="Search the vault..." 
+                placeholder="Search games..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 text-white py-3 pl-12 pr-6 rounded-xl outline-none focus:bg-white/10 transition-all font-sans text-sm font-medium placeholder:text-neutral-600"
@@ -619,7 +619,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
               />
               {customGames.length > 0 && (
                 <GameRail 
-                  title="Your Custom Vault" 
+                  title="Your Custom Games" 
                   games={customGames} 
                   icon={Box} 
                   favorites={favorites}
@@ -798,7 +798,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
                   disabled={!newGame.title || !newGame.id}
                   className="flex-1 py-3 bg-accent text-black rounded-xl font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
                 >
-                  Add to Vault
+                  Add to Games
                 </button>
               </div>
             </motion.div>
@@ -837,7 +837,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
                       value={hubName}
                       onChange={e => { setHubName(e.target.value); saveSettings({ hubName: e.target.value }); }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white font-black italic uppercase outline-none focus:border-accent transition-all"
-                      placeholder="e.g. THE VAULT"
+                      placeholder="e.g. GAMES"
                     />
                   </div>
                   <div className="space-y-3">
@@ -866,7 +866,7 @@ export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: Games
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-neutral-500">Accent Signature</label>
                   <div className="flex flex-wrap gap-3">
-                    {['#FFCC00', '#FF3366', '#00FFCC', '#9933FF', '#FF6600', '#FFFFFF'].map(color => (
+                    {['#ff0000', '#FF3366', '#00FFCC', '#9933FF', '#FF6600', '#FFFFFF'].map(color => (
                       <button
                         key={color}
                         onClick={() => { setAccentColor(color); saveSettings({ accentColor: color }); }}

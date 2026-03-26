@@ -9,6 +9,11 @@ interface UpdateLogProps {
 
 const UPDATES = [
   {
+    version: "1.2.0",
+    date: "2026-03-26",
+    changes: ["Added Games 🎮"]
+  },
+  {
     version: "",
     date: "2026-03-23",
     changes: ["Invincible Season 4 added"]

@@ -239,7 +239,7 @@ const App: React.FC = () => {
             <div className="text-xs text-text-secondary">© 2026 ChillZone</div>
         </div>
 
-        {isSidebarVisible && (
+        {isSidebarVisible && !selectedGame && (
             <Sidebar 
             activeCategory={activeCategory} 
             onSelect={(cat) => { setActiveCategory(cat); setSearchQuery(''); setIsSettingsOpen(false); }} 
