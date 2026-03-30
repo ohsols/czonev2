@@ -13,7 +13,10 @@ import { MOVIES_DATA, ANIME_DATA, MANGA_DATA, TV_DATA, STAFF_DATA, PARTNERS_DATA
 import { GAME_PAYLOADS } from './gamePayloads';
 import { getEmulatorHtml } from './services/emulatorService';
 import { useLanguage } from './context/LanguageContext';
-import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, MessageSquare, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit, ChevronDown, LayoutGrid, Gamepad2 } from 'lucide-react';
+import { auth, signInWithGoogle, logout } from './firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import AdminDashboard from './components/AdminDashboard';
+import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, MessageSquare, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit, ChevronDown, LayoutGrid, Gamepad2, ShieldCheck, LogOut, LogIn } from 'lucide-react';
 
 const DEFAULT_LOGO = "https://lh7-rt.googleusercontent.com/sitesz/AClOY7psM7n5cC2oRAQVLVss3LsgYFKWwE-KzTjGQvDYtnnp1f1j-Szl1OH6r1pZTXpsw0t_1es0N4P9E2cBl4Oqs-lOwNJdAt3H5CiGxGZKfBTzaYq_ybiI1qd2dWXWu_GRWMqLDD_3BL9tkNhJBNJhjBuuQWyvP1B19h6v0fblyHBwfxs-94c7?key=IannGxLsV9P5UfJ0NHPqqQ";
 
@@ -133,7 +136,18 @@ const App: React.FC = () => {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateLogOpen, setIsUpdateLogOpen] = useState(true);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { t } = useLanguage();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAdmin(currentUser?.email === 'darkfn1234567890@gmail.com');
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const savedLogo = localStorage.getItem('chillzone_custom_logo');
@@ -280,6 +294,26 @@ const App: React.FC = () => {
         </div>
 
         <AnimatePresence>
+          {isAdminOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-8"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative w-full max-w-5xl h-[80vh] bg-[#0f0f0f] rounded-3xl overflow-hidden border border-white/10 shadow-2xl"
+              >
+                <AdminDashboard onClose={() => setIsAdminOpen(false)} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {selectedGame && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -366,6 +400,18 @@ const App: React.FC = () => {
               <DateTimeWidget />
             </div>
             <div className="flex items-center gap-3 relative">
+              {isAdmin && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsAdminOpen(true)}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-accent/10 border border-accent/20 text-accent hover:bg-accent/20 transition-all duration-300"
+                  title="Admin Dashboard"
+                >
+                  <ShieldCheck size={18} />
+                </motion.button>
+              )}
+
               <div className="relative">
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
@@ -399,6 +445,16 @@ const App: React.FC = () => {
                   )}
                 </AnimatePresence>
               </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={user ? logout : signInWithGoogle}
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface-hover border border-white/5 text-text-secondary hover:text-white hover:border-white/20 transition-all duration-300"
+                title={user ? "Logout" : "Login with Google"}
+              >
+                {user ? <LogOut size={18} /> : <LogIn size={18} />}
+              </motion.button>
 
               <motion.a 
                 whileHover={{ scale: 1.05 }}
