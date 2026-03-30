@@ -16,6 +16,7 @@ import { useLanguage } from './context/LanguageContext';
 import { auth, logout, db, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import ChatRoom from './components/ChatRoom';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import SuggestionModal from './components/SuggestionModal';
@@ -160,6 +161,7 @@ const App: React.FC = () => {
       if (currentUser) {
         setIsAuthModalOpen(false);
       } else {
+        setIsAuthModalOpen(true);
         setFavorites([]);
         localStorage.removeItem('chillzone_favorites');
       }
@@ -769,6 +771,9 @@ const App: React.FC = () => {
                         onToggleFavorite={onToggleFavorite} 
                         setSelectedGame={setSelectedGame} 
                       />
+                    )}
+                    {activeCategory === 'chat' && (
+                      user ? <ChatRoom /> : <div className="text-center py-20 text-text-muted">Please sign up to access the chat room.</div>
                     )}
                     {activeCategory === 'movies' && <LibrarySection title={t('Movies')} items={MOVIES_DATA} category="movie" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />}
                     {activeCategory === 'tv shows' && <LibrarySection title={t('TV Shows')} items={TV_DATA} category="tv" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />}
