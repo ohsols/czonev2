@@ -70,7 +70,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     });
 
     const checkOwner = () => {
-      if (auth.currentUser?.email === 'darkfn1234567890@gmail.com' || auth.currentUser?.email === 'whitecaleb888@gmail.com') {
+      const email = auth.currentUser?.email?.toLowerCase();
+      if (email === 'darkfn1234567890@gmail.com' || email === 'whitecaleb888@gmail.com') {
         setIsAppOwner(true);
       }
     };
