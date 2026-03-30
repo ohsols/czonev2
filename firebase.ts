@@ -10,12 +10,15 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const signInWithGoogle = async () => {
+  console.log("Starting Google Sign-In...");
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    console.log("Google Sign-In successful:", result.user.email);
     // Create user doc if it doesn't exist
     const userDoc = doc(db, 'users', result.user.uid);
     const docSnap = await getDoc(userDoc);
     if (!docSnap.exists()) {
+      console.log("Creating new user document for:", result.user.email);
       await setDoc(userDoc, {
         uid: result.user.uid,
         email: result.user.email,
@@ -33,11 +36,14 @@ export const signInWithGoogle = async () => {
 };
 
 export const signUpWithEmail = async (email: string, pass: string, username: string) => {
+  console.log("Starting Email Sign-Up for:", email);
   try {
     const result = await createUserWithEmailAndPassword(auth, email, pass);
+    console.log("Email Sign-Up successful:", result.user.email);
     await updateProfile(result.user, { displayName: username });
     
     // Create user doc
+    console.log("Creating user document for:", email);
     await setDoc(doc(db, 'users', result.user.uid), {
       uid: result.user.uid,
       email: result.user.email,
@@ -54,8 +60,10 @@ export const signUpWithEmail = async (email: string, pass: string, username: str
 };
 
 export const loginWithEmail = async (email: string, pass: string) => {
+  console.log("Starting Email Login for:", email);
   try {
     const result = await signInWithEmailAndPassword(auth, email, pass);
+    console.log("Email Login successful:", result.user.email);
     return result.user;
   } catch (error) {
     console.error("Error logging in with email:", error);

@@ -145,8 +145,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      console.log("Auth state changed:", currentUser?.email);
       setUser(currentUser);
       setIsAdmin(currentUser?.email === 'darkfn1234567890@gmail.com');
+      if (currentUser) {
+        setIsAuthModalOpen(false);
+      }
     });
     return () => unsubscribe();
   }, []);

@@ -19,6 +19,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    console.log(`Submitting ${mode} form for:`, email);
 
     try {
       if (mode === 'login') {
@@ -27,8 +28,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
         if (!username.trim()) throw new Error('Username is required');
         await signUpWithEmail(email, password, username);
       }
+      console.log(`${mode} successful, closing modal.`);
       onClose();
     } catch (err: any) {
+      console.error(`${mode} error:`, err);
       setError(err.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
@@ -36,12 +39,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
   };
 
   const handleGoogleLogin = async () => {
+    console.log("Initiating Google Login...");
     setError(null);
     setIsLoading(true);
     try {
       await signInWithGoogle();
+      console.log("Google Login successful, closing modal.");
       onClose();
     } catch (err: any) {
+      console.error("Google Login error:", err);
       setError(err.message || 'Google login failed');
     } finally {
       setIsLoading(false);
