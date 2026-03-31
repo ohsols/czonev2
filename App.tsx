@@ -212,6 +212,10 @@ const App: React.FC = () => {
           root.style.setProperty('--accent-glow-dim', `rgba(${rgb}, 0.1)`);
           root.dataset.theme = data.theme;
         }
+        
+        // Update admin status based on role in database
+        const isAppOwner = user.email === 'darkfn1234567890@gmail.com' || user.email === 'whitecaleb888@gmail.com' || user.email === 'calebwhite2@chisd.net';
+        setIsAdmin(isAppOwner || data.role === 'admin');
       }
     }, (err) => {
       handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);

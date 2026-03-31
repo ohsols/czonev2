@@ -54,6 +54,17 @@ app.get('/api/music/search', async (req, res) => {
     const query = req.query.q as string;
     if (!query) return res.status(400).json({ error: 'Query required' });
     
+    // Try saavn.dev API first as it's more reliable
+    try {
+      const response = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        return res.json(data);
+      }
+    } catch (e) {
+      console.error('saavn.dev API failed, trying backup...');
+    }
+
     // Try primary API (jiosaavn-api.vercel.app)
     try {
       const response = await fetch(`https://jiosaavn-api.vercel.app/search?query=${encodeURIComponent(query)}`);
@@ -62,18 +73,7 @@ app.get('/api/music/search', async (req, res) => {
         return res.json(data);
       }
     } catch (e) {
-      console.error('Primary API failed, trying backup...');
-    }
-
-    // Try backup API (saavn.dev)
-    try {
-      const response = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}`);
-      if (response.ok) {
-        const data = await response.json();
-        return res.json(data);
-      }
-    } catch (e) {
-      console.error('Backup API failed');
+      console.error('jiosaavn-api.vercel.app API failed');
     }
 
     res.status(500).json({ error: 'All APIs failed' });
@@ -88,6 +88,17 @@ app.get('/api/music/songs/:id', async (req, res) => {
     const id = req.params.id;
     if (!id) return res.status(400).json({ error: 'ID required' });
 
+    // Try saavn.dev API first
+    try {
+      const response = await fetch(`https://saavn.dev/api/songs/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        return res.json(data);
+      }
+    } catch (e) {
+      console.error('saavn.dev API failed, trying backup...');
+    }
+
     // Try primary API (jiosaavn-api.vercel.app)
     try {
       const response = await fetch(`https://jiosaavn-api.vercel.app/song?id=${id}`);
@@ -96,18 +107,7 @@ app.get('/api/music/songs/:id', async (req, res) => {
         return res.json(data);
       }
     } catch (e) {
-      console.error('Primary API failed, trying backup...');
-    }
-
-    // Try backup API (saavn.dev)
-    try {
-      const response = await fetch(`https://saavn.dev/api/songs/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        return res.json(data);
-      }
-    } catch (e) {
-      console.error('Backup API failed');
+      console.error('jiosaavn-api.vercel.app API failed');
     }
 
     res.status(500).json({ error: 'All APIs failed' });

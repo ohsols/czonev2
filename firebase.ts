@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, query, where, getDocs, orderBy, limit, getDocFromServer, FirestoreError, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, query, where, getDocs, orderBy, limit, getDocFromServer, FirestoreError, serverTimestamp, updateDoc } from 'firebase/firestore';
 import firebaseConfig from './firebase-applet-config.json';
 
 // Initialize Firebase SDK
@@ -18,24 +18,33 @@ export const signInWithGoogle = async () => {
     // Create user doc if it doesn't exist
     const userDoc = doc(db, 'users', result.user.uid);
     const docSnap = await getDoc(userDoc);
+    
+    // Check if user is an allowed admin
+    let isAllowedAdmin = false;
+    if (result.user.email) {
+      const allowedAdminDoc = await getDoc(doc(db, 'allowed_admins', result.user.email.toLowerCase()));
+      isAllowedAdmin = allowedAdminDoc.exists();
+    }
+
     if (!docSnap.exists()) {
       console.log("Creating new user document for:", result.user.email);
-      
-      // Check if user is an allowed admin
-      let isAllowedAdmin = false;
-      if (result.user.email) {
-        const allowedAdminDoc = await getDoc(doc(db, 'allowed_admins', result.user.email.toLowerCase()));
-        isAllowedAdmin = allowedAdminDoc.exists();
-      }
       
       await setDoc(userDoc, {
         uid: result.user.uid,
         email: result.user.email || null,
         displayName: result.user.displayName || null,
         photoURL: result.user.photoURL || null,
-        role: (result.user.email === 'darkfn1234567890@gmail.com' || result.user.email === 'whitecaleb888@gmail.com' || isAllowedAdmin) ? 'admin' : 'user',
+        role: (result.user.email === 'darkfn1234567890@gmail.com' || result.user.email === 'whitecaleb888@gmail.com' || result.user.email === 'calebwhite2@chisd.net' || isAllowedAdmin) ? 'admin' : 'user',
         createdAt: serverTimestamp()
       });
+    } else {
+      // Update role if they are an admin but their role is not set to admin
+      const currentRole = docSnap.data().role;
+      const shouldBeAdmin = result.user.email === 'darkfn1234567890@gmail.com' || result.user.email === 'whitecaleb888@gmail.com' || result.user.email === 'calebwhite2@chisd.net' || isAllowedAdmin;
+      
+      if (shouldBeAdmin && currentRole !== 'admin') {
+        await updateDoc(userDoc, { role: 'admin' });
+      }
     }
     return result.user;
   } catch (error) {
@@ -66,7 +75,7 @@ export const signUpWithEmail = async (email: string, pass: string, username: str
       email: result.user.email || null,
       displayName: username || null,
       photoURL: result.user.photoURL || null,
-      role: (result.user.email === 'darkfn1234567890@gmail.com' || result.user.email === 'whitecaleb888@gmail.com' || isAllowedAdmin) ? 'admin' : 'user',
+      role: (result.user.email === 'darkfn1234567890@gmail.com' || result.user.email === 'whitecaleb888@gmail.com' || result.user.email === 'calebwhite2@chisd.net' || isAllowedAdmin) ? 'admin' : 'user',
       createdAt: serverTimestamp()
     });
     
@@ -82,6 +91,25 @@ export const loginWithEmail = async (email: string, pass: string) => {
   try {
     const result = await signInWithEmailAndPassword(auth, email, pass);
     console.log("Email Login successful:", result.user.email);
+
+    const userDocRef = doc(db, 'users', result.user.uid);
+    const docSnap = await getDoc(userDocRef);
+    
+    if (docSnap.exists()) {
+      let isAllowedAdmin = false;
+      if (result.user.email) {
+        const allowedAdminDoc = await getDoc(doc(db, 'allowed_admins', result.user.email.toLowerCase()));
+        isAllowedAdmin = allowedAdminDoc.exists();
+      }
+      
+      const currentRole = docSnap.data().role;
+      const shouldBeAdmin = result.user.email === 'darkfn1234567890@gmail.com' || result.user.email === 'whitecaleb888@gmail.com' || result.user.email === 'calebwhite2@chisd.net' || isAllowedAdmin;
+      
+      if (shouldBeAdmin && currentRole !== 'admin') {
+        await updateDoc(userDocRef, { role: 'admin' });
+      }
+    }
+
     return result.user;
   } catch (error) {
     console.error("Error logging in with email:", error);

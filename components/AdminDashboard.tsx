@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, auth, OperationType, handleFirestoreError } from '../firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs } from 'firebase/firestore';
 
 interface User {
   uid: string;
@@ -55,7 +55,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'announcements' | 'suggestions' | 'users' | 'admins' | 'analytics'>('announcements');
   const [suggestionFilter, setSuggestionFilter] = useState<'all' | 'pending' | 'reviewed'>('all');
-  const [isAppOwner, setIsAppOwner] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
 
   useEffect(() => {
     const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'));
@@ -79,14 +79,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }, (err) => {
       handleFirestoreError(err, OperationType.LIST, 'suggestions');
     });
-
-    const checkOwner = () => {
-      const email = auth.currentUser?.email?.toLowerCase();
-      if (email === 'darkfn1234567890@gmail.com' || email === 'whitecaleb888@gmail.com') {
-        setIsAppOwner(true);
-      }
-    };
-    checkOwner();
 
     const qAdmins = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'));
     const unsubscribeAdmins = onSnapshot(qAdmins, (snapshot) => {
@@ -183,7 +175,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   };
 
   const handleUpdateUserRole = async (uid: string, currentRole: 'admin' | 'user') => {
-    if (!isAppOwner) return;
     try {
       await updateDoc(doc(db, 'users', uid), {
         role: currentRole === 'admin' ? 'user' : 'admin'
@@ -195,7 +186,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAdminEmail.trim() || !isAppOwner) return;
+    if (!newAdminEmail.trim()) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -208,6 +199,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         addedBy: auth.currentUser?.uid,
         createdAt: serverTimestamp()
       });
+
+      // Update existing user role if they already have an account
+      const usersRef = collection(db, 'users');
+      const querySnapshot = await getDocs(usersRef);
+      const updatePromises = querySnapshot.docs
+        .filter(docSnap => docSnap.data().email?.toLowerCase() === email)
+        .map(docSnap => updateDoc(doc(db, 'users', docSnap.id), { role: 'admin' }));
+      await Promise.all(updatePromises);
+
       setNewAdminEmail('');
       setSuccess('Admin email added successfully!');
       setTimeout(() => setSuccess(null), 3000);
@@ -220,9 +220,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   };
 
   const handleDeleteAdmin = async (id: string) => {
-    if (!isAppOwner) return;
     try {
       await deleteDoc(doc(db, 'allowed_admins', id));
+      
+      // Update existing user role back to user
+      const usersRef = collection(db, 'users');
+      const querySnapshot = await getDocs(usersRef);
+      const updatePromises = querySnapshot.docs
+        .filter(docSnap => docSnap.data().email?.toLowerCase() === id.toLowerCase())
+        .map(docSnap => updateDoc(doc(db, 'users', docSnap.id), { role: 'user' }));
+      await Promise.all(updatePromises);
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `allowed_admins/${id}`);
     }
@@ -256,7 +263,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           { id: 'suggestions', icon: Send, label: 'Suggestions' },
           { id: 'analytics', icon: Activity, label: 'Analytics' },
           { id: 'users', icon: Users, label: 'User Management' },
-          ...(isAppOwner ? [{ id: 'admins', icon: ShieldCheck, label: 'Manage Admins' }] : [])
+          { id: 'admins', icon: ShieldCheck, label: 'Manage Admins' }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -431,11 +438,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
         {activeTab === 'users' && (
           <div className="space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-neutral-500">User Management</h3>
-            {users.length === 0 ? (
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-widest text-neutral-500">User Management</h3>
+              <input
+                type="text"
+                placeholder="Search by email..."
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-accent/50 w-64"
+              />
+            </div>
+            {users.filter(user => {
+              if (!userSearchQuery) return true;
+              return user.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+            }).length === 0 ? (
               <div className="text-center py-12 text-neutral-600 italic text-sm">No users found.</div>
             ) : (
-              users.map((user) => (
+              users.filter(user => {
+                if (!userSearchQuery) return true;
+                return user.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+              }).map((user) => (
                 <div key={user.uid} className="bg-white/5 border border-white/5 rounded-2xl p-5 flex items-center justify-between group hover:border-white/10 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold">
@@ -444,6 +466,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     <div>
                       <h4 className="font-bold text-white">{user.displayName || 'Anonymous'}</h4>
                       <p className="text-xs text-neutral-400">{user.email}</p>
+                      {user.createdAt && (
+                        <p className="text-[10px] text-neutral-500 mt-1">
+                          Joined: {user.createdAt.toDate().toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -452,14 +479,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     }`}>
                       {user.role}
                     </span>
-                    {isAppOwner && (
-                      <button 
-                        onClick={() => handleUpdateUserRole(user.uid, user.role)}
-                        className="text-xs text-neutral-500 hover:text-white transition-colors"
-                      >
-                        Toggle Role
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => handleUpdateUserRole(user.uid, user.role)}
+                      className="text-xs text-neutral-500 hover:text-white transition-colors"
+                    >
+                      Toggle Role
+                    </button>
                   </div>
                 </div>
               ))
@@ -467,7 +492,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           </div>
         )}
 
-        {activeTab === 'admins' && isAppOwner && (
+        {activeTab === 'admins' && (
           <div className="space-y-6">
             <form onSubmit={handleAddAdmin} className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
               <h3 className="text-sm font-black uppercase tracking-widest text-accent">Add New Admin</h3>

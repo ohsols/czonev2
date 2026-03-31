@@ -79,22 +79,33 @@ const MusicPlayer: React.FC = () => {
       else if (data.data && data.data.results) {
         formattedTracks = data.data.results.map((item: any) => ({
           id: item.id,
-          title: item.name,
-          artist: item.artists?.primary?.[0]?.name || item.artist || 'Unknown Artist',
-          album: item.album?.name || 'Unknown Album',
-          cover: item.image?.[2]?.link || item.image?.[2]?.url || item.image?.[0]?.link || '',
-          streamUrl: item.downloadUrl?.[4]?.link || item.downloadUrl?.[4]?.url || undefined,
+          title: item.name || item.title,
+          artist: item.artists?.primary?.[0]?.name || item.artist || item.subtitle || 'Unknown Artist',
+          album: item.album?.name || item.album || 'Unknown Album',
+          cover: item.image?.[2]?.link || item.image?.[2]?.url || item.image?.[0]?.link || item.image || '',
+          streamUrl: item.downloadUrl?.[4]?.link || item.downloadUrl?.[4]?.url || item.downloadUrl || undefined,
           source: 'saavn'
         }));
       } else if (Array.isArray(data)) {
          // Some Saavn APIs return array directly
          formattedTracks = data.map((item: any) => ({
           id: item.id,
-          title: item.song || item.name,
-          artist: item.singers || item.artist || 'Unknown Artist',
+          title: item.song || item.name || item.title,
+          artist: item.singers || item.artist || item.subtitle || 'Unknown Artist',
           album: item.album || 'Unknown Album',
           cover: item.image,
-          streamUrl: item.media_url || undefined,
+          streamUrl: item.media_url || item.downloadUrl || undefined,
+          source: 'saavn'
+        }));
+      } else if (data.results) {
+        // Handle direct results array
+        formattedTracks = data.results.map((item: any) => ({
+          id: item.id,
+          title: item.name || item.title,
+          artist: item.artists?.primary?.[0]?.name || item.artist || item.subtitle || 'Unknown Artist',
+          album: item.album?.name || item.album || 'Unknown Album',
+          cover: item.image?.[2]?.link || item.image?.[2]?.url || item.image?.[0]?.link || item.image || '',
+          streamUrl: item.downloadUrl?.[4]?.link || item.downloadUrl?.[4]?.url || item.downloadUrl || undefined,
           source: 'saavn'
         }));
       }
@@ -115,7 +126,17 @@ const MusicPlayer: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           const song = data.data?.[0] || data[0] || data;
-          return song.downloadUrl?.[4]?.link || song.downloadUrl?.[4]?.url || song.media_url || null;
+          
+          if (!song) return null;
+
+          // Try different possible locations for the download URL
+          if (Array.isArray(song.downloadUrl)) {
+            // Try to get the highest quality (usually the last one)
+            const highestQuality = song.downloadUrl[song.downloadUrl.length - 1];
+            return highestQuality?.link || highestQuality?.url || null;
+          }
+          
+          return song.downloadUrl || song.media_url || null;
         }
         return null;
       }
