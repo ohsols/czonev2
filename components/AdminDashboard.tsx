@@ -9,7 +9,7 @@ interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
-  role: 'admin' | 'user';
+  role: 'admin' | 'co-owner' | 'user' | 'donator';
   createdAt: Timestamp;
 }
 
@@ -175,7 +175,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin }
     }
   };
 
-  const handleUpdateUserRole = async (uid: string, newRole: 'admin' | 'user' | 'donator') => {
+  const handleUpdateUserRole = async (uid: string, newRole: 'admin' | 'co-owner' | 'user' | 'donator') => {
     try {
       await updateDoc(doc(db, 'users', uid), {
         role: newRole
@@ -484,6 +484,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin }
                     >
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
+                      <option value="co-owner">Co-Owner</option>
                       <option value="donator">Donator</option>
                     </select>
                   </div>
