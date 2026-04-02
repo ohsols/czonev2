@@ -12,17 +12,10 @@ interface ItemCardProps {
   onOpenDetails: (item: LibraryItem, category: string) => void;
 }
 
-const ItemCard: React.FC<ItemCardProps> = ({ item, category, onOpenDetails }) => {
+const ItemCard: React.FC<ItemCardProps> = React.memo(({ item, category, onOpenDetails }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState(item.img || '');
   const [isSearching, setIsSearching] = useState(false);
-
-  // Debugging src prop
-  useEffect(() => {
-    if (currentImageUrl !== undefined && typeof currentImageUrl !== 'string' && currentImageUrl !== null) {
-      console.warn('ItemCard: currentImageUrl is not a string:', currentImageUrl, 'for item:', item.t);
-    }
-  }, [currentImageUrl, item.t]);
 
   const [translatedTitle, setTranslatedTitle] = useState(item.t);
   const { translateDynamic, language } = useLanguage();
@@ -30,15 +23,26 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, category, onOpenDetails }) =>
   const isPlaceholder = !currentImageUrl || currentImageUrl.includes('placehold.co');
 
   useEffect(() => {
+    let isMounted = true;
     const translate = async () => {
       if (language === 'en-US') {
-        setTranslatedTitle(item.t);
+        if (isMounted) setTranslatedTitle(item.t);
         return;
       }
+      
+      // Fast check for cache before calling translateDynamic
+      const cacheKey = `${language}:${item.t}`;
+      const savedCache = JSON.parse(localStorage.getItem('chillzone_translation_cache') || '{}');
+      if (savedCache[cacheKey]) {
+        if (isMounted) setTranslatedTitle(savedCache[cacheKey]);
+        return;
+      }
+
       const translated = await translateDynamic(item.t);
-      setTranslatedTitle(translated);
+      if (isMounted) setTranslatedTitle(translated);
     };
     translate();
+    return () => { isMounted = false; };
   }, [item.t, language, translateDynamic]);
 
   useEffect(() => {
@@ -108,6 +112,6 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, category, onOpenDetails }) =>
       </div>
     </motion.div>
   );
-};
+});
 
 export default ItemCard;

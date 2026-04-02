@@ -630,7 +630,14 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [language, setLanguageState] = useState(localStorage.getItem('chillzone_language') || 'en-US');
   const [militaryTime, setMilitaryTimeState] = useState(localStorage.getItem('chillzone_military_time') === 'true');
   const [timeZone, setTimeZoneState] = useState(localStorage.getItem('chillzone_timezone') || 'auto');
-  const [dynamicCache, setDynamicCache] = useState<Record<string, string>>({});
+  const [dynamicCache, setDynamicCache] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('chillzone_translation_cache');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('chillzone_translation_cache', JSON.stringify(dynamicCache));
+  }, [dynamicCache]);
 
   const setLanguage = (lang: string) => {
     setLanguageState(lang);
@@ -661,9 +668,18 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     const cacheKey = `${language}:${text}`;
     if (dynamicCache[cacheKey]) return dynamicCache[cacheKey];
 
-    const translated = await translateText(text, language);
-    setDynamicCache(prev => ({ ...prev, [cacheKey]: translated }));
-    return translated;
+    // Check localStorage directly for faster access if state hasn't updated yet
+    const savedCache = JSON.parse(localStorage.getItem('chillzone_translation_cache') || '{}');
+    if (savedCache[cacheKey]) return savedCache[cacheKey];
+
+    try {
+      const translated = await translateText(text, language);
+      setDynamicCache(prev => ({ ...prev, [cacheKey]: translated }));
+      return translated;
+    } catch (error) {
+      console.error("Translation error:", error);
+      return text;
+    }
   };
 
   return (

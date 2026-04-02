@@ -101,7 +101,7 @@ interface GameCardProps {
   accentColor: string;
 }
 
-const GameCard = ({ 
+const GameCard = React.memo(({ 
   game, 
   size = 'md', 
   favorites, 
@@ -212,7 +212,7 @@ const GameCard = ({
       </div>
     </motion.div>
   );
-};
+});
 
 interface GameRailProps {
   key?: string | number;
@@ -230,7 +230,7 @@ interface GameRailProps {
   accentColor: string;
 }
 
-const GameRail = ({ 
+const GameRail = React.memo(({ 
   title, 
   games, 
   icon: Icon, 
@@ -281,7 +281,7 @@ const GameRail = ({
       </div>
     </div>
   );
-};
+});
 
 export function GamesHub({ favorites, onToggleFavorite, setSelectedGame }: GamesHubProps) {
   const [searchTerm, setSearchTerm] = useState('');

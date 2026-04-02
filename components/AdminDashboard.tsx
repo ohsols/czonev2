@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check, Ban, UserCheck } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, auth, OperationType, handleFirestoreError } from '../firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs, limit } from 'firebase/firestore';
 
 interface User {
   uid: string;
@@ -61,7 +61,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [userSearchQuery, setUserSearchQuery] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -72,7 +72,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       handleFirestoreError(err, OperationType.LIST, 'site_announcements');
     });
 
-    const qSuggestions = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'));
+    const qSuggestions = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribeSuggestions = onSnapshot(qSuggestions, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -83,7 +83,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       handleFirestoreError(err, OperationType.LIST, 'suggestions');
     });
 
-    const qAdmins = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'));
+    const qAdmins = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribeAdmins = onSnapshot(qAdmins, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -94,7 +94,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       handleFirestoreError(err, OperationType.LIST, 'allowed_admins');
     });
 
-    const qUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+    const qUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
         uid: doc.id,

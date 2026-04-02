@@ -33,10 +33,11 @@ const LibrarySection: React.FC<LibrarySectionProps> = ({ title, items, category,
   const [localSearch, setLocalSearch] = React.useState('');
   const { t } = useLanguage();
   
-  const filteredItems = items.filter(item => {
+  const filteredItems = React.useMemo(() => {
     const term = (localSearch || searchQuery).toLowerCase();
-    return item.t.toLowerCase().includes(term);
-  });
+    if (!term) return items;
+    return items.filter(item => item.t.toLowerCase().includes(term));
+  }, [items, localSearch, searchQuery]);
 
   return (
     <motion.div 

@@ -43,15 +43,26 @@ const TranslatedText: React.FC<{ text: string }> = ({ text }) => {
   const [translated, setTranslated] = useState(text);
 
   useEffect(() => {
+    let isMounted = true;
     const translate = async () => {
       if (language === 'en-US') {
-        setTranslated(text);
+        if (isMounted) setTranslated(text);
         return;
       }
+      
+      // Fast check for cache before calling translateDynamic
+      const cacheKey = `${language}:${text}`;
+      const savedCache = JSON.parse(localStorage.getItem('chillzone_translation_cache') || '{}');
+      if (savedCache[cacheKey]) {
+        if (isMounted) setTranslated(savedCache[cacheKey]);
+        return;
+      }
+
       const result = await translateDynamic(text);
-      setTranslated(result);
+      if (isMounted) setTranslated(result);
     };
     translate();
+    return () => { isMounted = false; };
   }, [text, language, translateDynamic]);
 
   return <>{translated}</>;
@@ -83,9 +94,9 @@ const ScrambleEffect: React.FC = () => {
       const targetElements = elements
         .filter(el => {
           // Avoid elements with many children to prevent React crashes
-          return el.childNodes.length === 1 && el.childNodes[0].nodeType === 3 && Math.random() > 0.7;
+          return el.childNodes.length === 1 && el.childNodes[0].nodeType === 3 && Math.random() > 0.9;
         })
-        .slice(0, 20);
+        .slice(0, 5);
 
       targetElements.forEach(el => {
         if (!originalTexts.has(el)) {
@@ -102,10 +113,10 @@ const ScrambleEffect: React.FC = () => {
             originalTexts.delete(el);
           }
         });
-      }, 1500);
+      }, 1000);
     };
 
-    interval = setInterval(runScramble, 5000);
+    interval = setInterval(runScramble, 10000);
     return () => {
       clearInterval(interval);
       originalTexts.forEach((text, el) => {
