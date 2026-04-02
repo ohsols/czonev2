@@ -190,6 +190,7 @@ const App: React.FC = () => {
       } else {
         setIsAuthModalOpen(true);
         setFavorites([]);
+        setIsBanned(false);
         localStorage.removeItem('chillzone_favorites');
       }
     });

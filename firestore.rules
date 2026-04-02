@@ -146,7 +146,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if (isOwner(userId) || isAdmin() || isCoOwner()) && !isBanned();
+      allow read: if isOwner(userId) || isAdmin() || isCoOwner();
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isSuperAdmin() || isAllowedAdmin() || isAppOwner());
       allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role && (!('banned' in request.resource.data) || request.resource.data.banned == resource.data.banned) && !isBanned()) ||
                     (isSuperAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'banned']) && request.resource.data.role in ['admin', 'co-owner', 'user', 'donator']) ||
