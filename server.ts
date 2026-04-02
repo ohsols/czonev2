@@ -212,7 +212,7 @@ async function startServer() {
     // In production, serve static files from dist
     app.use(express.static('dist'));
     // Catch-all for SPA in production
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
