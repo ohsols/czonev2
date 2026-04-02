@@ -1,12 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
 @font-face {
   font-family: 'Swordskull';
   src: url('/fonts/Swordskull_PERSONAL_USE.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
-@import "tailwindcss";
 
 :root {
   --accent: #ff0000;

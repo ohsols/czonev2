@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, OperationType, handleFirestoreError } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Megaphone, X } from 'lucide-react';
 
 export const SiteAnnouncements = () => {
@@ -15,14 +15,17 @@ export const SiteAnnouncements = () => {
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'site_announcements'), where('active', '==', true));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAnnouncements(data);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'site_announcements');
-    });
-    return () => unsubscribe();
+    const fetchAnnouncements = async () => {
+      try {
+        const q = query(collection(db, 'site_announcements'), where('active', '==', true));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAnnouncements(data);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.LIST, 'site_announcements');
+      }
+    };
+    fetchAnnouncements();
   }, []);
 
   const handleDismiss = (id: string) => {

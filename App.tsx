@@ -10,8 +10,6 @@ import DateTimeWidget from './components/DateTimeWidget';
 import { GamesHub } from './components/GamesHub';
 import { Category, LibraryItem, StaffMember, Game, FavoriteItem } from './types';
 import { MOVIES_DATA, ANIME_DATA, MANGA_DATA, TV_DATA, STAFF_DATA, PARTNERS_DATA, PROXIES_DATA } from './constants';
-import { GAME_PAYLOADS } from './gamePayloads';
-import { getEmulatorHtml } from './services/emulatorService';
 import { useLanguage } from './context/LanguageContext';
 import { auth, logout, db, handleFirestoreError, OperationType } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -169,7 +167,6 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('chillzone_favorites');
     return saved ? JSON.parse(saved) : [];
   });
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateLogOpen, setIsUpdateLogOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -182,7 +179,22 @@ const App: React.FC = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [quotaError, setQuotaError] = useState<string | null>(null);
   const { t } = useLanguage();
+
+  useEffect(() => {
+    const handleFirestoreErrorEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const errInfo = customEvent.detail;
+      if (errInfo && errInfo.error && (errInfo.error.includes('Quota limit exceeded') || errInfo.error.includes('Quota exceeded'))) {
+        console.error("Firebase Quota Exceeded. The free daily read/write limit for this database has been reached. The quota will reset tomorrow.");
+        // setQuotaError("Firebase Quota Exceeded. The free daily read/write limit for this database has been reached. The quota will reset tomorrow.");
+      }
+    };
+
+    window.addEventListener('firestore-error', handleFirestoreErrorEvent);
+    return () => window.removeEventListener('firestore-error', handleFirestoreErrorEvent);
+  }, []);
 
   useEffect(() => {
     if (!user || !isAuthReady || hasOpenedUpdateLog) return;
@@ -201,7 +213,6 @@ const App: React.FC = () => {
       if (currentUser) {
         setIsAuthModalOpen(false);
       } else {
-        setIsAuthModalOpen(true);
         setFavorites([]);
         setIsBanned(false);
         localStorage.removeItem('chillzone_favorites');
@@ -214,59 +225,61 @@ const App: React.FC = () => {
     if (!user || !isAuthReady) return;
 
     const userDocRef = doc(db, 'users', user.uid);
-    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.customLogo) {
-          setCustomLogo(data.customLogo);
-          localStorage.setItem('chillzone_custom_logo', data.customLogo);
-        }
-        if (data.favorites) {
-          setFavorites(data.favorites);
-          localStorage.setItem('chillzone_favorites', JSON.stringify(data.favorites));
-        }
-        if (data.theme) {
-          localStorage.setItem('custom_theme_id', data.theme);
-          if (data.customThemes) {
-            localStorage.setItem('custom_themes', data.customThemes);
+    const fetchUser = async () => {
+      try {
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.customLogo) {
+            setCustomLogo(data.customLogo);
+            localStorage.setItem('chillzone_custom_logo', data.customLogo);
           }
-          // Apply theme
-          const savedThemes = localStorage.getItem('custom_themes');
-          const customThemes = savedThemes ? JSON.parse(savedThemes) : { ...defaultThemes };
-          const activeTheme = customThemes[data.theme] || defaultThemes.chillzone;
+          if (data.favorites) {
+            setFavorites(data.favorites);
+            localStorage.setItem('chillzone_favorites', JSON.stringify(data.favorites));
+          }
+          if (data.theme) {
+            localStorage.setItem('custom_theme_id', data.theme);
+            if (data.customThemes) {
+              localStorage.setItem('custom_themes', data.customThemes);
+            }
+            // Apply theme
+            const savedThemes = localStorage.getItem('custom_themes');
+            const customThemes = savedThemes ? JSON.parse(savedThemes) : { ...defaultThemes };
+            const activeTheme = customThemes[data.theme] || defaultThemes.chillzone;
+            
+            const root = document.documentElement;
+            root.style.setProperty('--bg', activeTheme.colors.bg);
+            root.style.setProperty('--text-primary', activeTheme.colors.textPrimary);
+            root.style.setProperty('--surface', activeTheme.colors.surface);
+            root.style.setProperty('--border', activeTheme.colors.border);
+            root.style.setProperty('--accent', activeTheme.colors.accent);
+            root.style.setProperty('--surface-hover', activeTheme.colors.surfaceHover);
+            
+            const hexToRgb = (hex: string) => {
+              const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+              return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 0, 0';
+            };
+            
+            const rgb = hexToRgb(activeTheme.colors.accent);
+            root.style.setProperty('--accent-glow', `rgba(${rgb}, 0.3)`);
+            root.style.setProperty('--accent-glow-dim', `rgba(${rgb}, 0.1)`);
+            root.dataset.theme = data.theme;
+          }
           
-          const root = document.documentElement;
-          root.style.setProperty('--bg', activeTheme.colors.bg);
-          root.style.setProperty('--text-primary', activeTheme.colors.textPrimary);
-          root.style.setProperty('--surface', activeTheme.colors.surface);
-          root.style.setProperty('--border', activeTheme.colors.border);
-          root.style.setProperty('--accent', activeTheme.colors.accent);
-          root.style.setProperty('--surface-hover', activeTheme.colors.surfaceHover);
-          
-          const hexToRgb = (hex: string) => {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 0, 0';
-          };
-          
-          const rgb = hexToRgb(activeTheme.colors.accent);
-          root.style.setProperty('--accent-glow', `rgba(${rgb}, 0.3)`);
-          root.style.setProperty('--accent-glow-dim', `rgba(${rgb}, 0.1)`);
-          root.dataset.theme = data.theme;
+          // Update admin status based on role in database
+          const email = user.email?.toLowerCase();
+          const isAppOwner = email === 'darkfn1234567890@gmail.com' || email === 'whitecaleb888@gmail.com';
+          const isSuperOwner = email === 'darkfn1234567890@gmail.com' || email === 'whitecaleb888@gmail.com';
+          setIsAdmin(isAppOwner || data.role === 'admin' || data.role === 'co-owner' || data.role === 'owner');
+          setIsSuperAdmin(isSuperOwner);
+          setIsBanned(!!data.banned);
         }
-        
-        // Update admin status based on role in database
-        const email = user.email?.toLowerCase();
-        const isAppOwner = email === 'darkfn1234567890@gmail.com' || email === 'whitecaleb888@gmail.com';
-        const isSuperOwner = email === 'darkfn1234567890@gmail.com' || email === 'whitecaleb888@gmail.com';
-        setIsAdmin(isAppOwner || data.role === 'admin' || data.role === 'co-owner' || data.role === 'owner');
-        setIsSuperAdmin(isSuperOwner);
-        setIsBanned(!!data.banned);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
       }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
-    });
-
-    return () => unsubscribe();
+    };
+    fetchUser();
   }, [user, isAuthReady]);
 
   useEffect(() => {
@@ -314,8 +327,7 @@ const App: React.FC = () => {
           setSelectedItem({...selectedItem, showPlayer: false});
         } else if (selectedItem) {
           setSelectedItem(null);
-        } else if (selectedGame) {
-          setSelectedGame(null);
+        } else if (false) {
         } else if (isAuthModalOpen) {
           setIsAuthModalOpen(false);
         } else if (isAdminOpen) {
@@ -327,12 +339,12 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItem, selectedGame]);
+  }, [selectedItem]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'EXIT_GAME') {
-        setSelectedGame(null);
+        // Game exit handled by GamesHub now
       }
     };
     window.addEventListener('message', handleMessage);
@@ -485,55 +497,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (!user && isAuthReady) {
-    return (
-      <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center p-6 text-center">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full opacity-60" style={{ background: 'var(--accent-glow-dim)', filter: 'blur(160px)', transform: 'translateZ(0)' }}></div>
-          <div className="absolute -bottom-40 -left-40 w-[800px] h-[800px] rounded-full opacity-60" style={{ background: 'var(--accent-glow-dim)', filter: 'blur(180px)', transform: 'translateZ(0)' }}></div>
-        </div>
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-[#0a0a0a] border border-white/10 rounded-[32px] p-12 shadow-2xl relative z-10"
-        >
-          <div className="w-24 h-24 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-8 border border-accent/20">
-            <Zap className="w-12 h-12 text-accent" />
-          </div>
-          <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white mb-4">ChillZone</h1>
-          <p className="text-neutral-400 text-sm leading-relaxed mb-8">
-            Please sign up or log in to access the platform. Join our community to enjoy movies, music, and more.
-          </p>
-          <button 
-            onClick={() => setIsAuthModalOpen(true)}
-            className="w-full py-4 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-sm transition-all shadow-lg shadow-accent/20"
-          >
-            Get Started
-          </button>
-        </motion.div>
-        
-        <AnimatePresence>
-          {isAuthModalOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-8"
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="relative w-full max-w-md bg-[#0a0a0a] rounded-3xl overflow-hidden border border-white/10 shadow-2xl"
-              >
-                <AuthModal onClose={() => setIsAuthModalOpen(false)} showCloseButton={false} />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
+  // Removed force login block
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
@@ -571,7 +535,7 @@ const App: React.FC = () => {
             <div className="text-xs text-text-secondary">© 2026 ChillZone</div>
         </div>
 
-        {!selectedGame && !isAuthModalOpen && !isAdminOpen && (
+        {!isAuthModalOpen && !isAdminOpen && (
             <Sidebar 
             activeCategory={activeCategory} 
             onSelect={(cat) => { setActiveCategory(cat); setSearchQuery(''); setIsSettingsOpen(false); }} 
@@ -909,11 +873,7 @@ const App: React.FC = () => {
                     )}
 
                     {activeCategory === 'games' && (
-                      <GamesHub 
-                        favorites={favorites} 
-                        onToggleFavorite={onToggleFavorite} 
-                        setSelectedGame={setSelectedGame} 
-                      />
+                      <GamesHub />
                     )}
                     {activeCategory === 'chat' && (
                       <div className="mt-20 max-w-[1600px] mx-auto pb-40 px-4 relative">
@@ -1239,72 +1199,45 @@ const App: React.FC = () => {
         )}
       </AnimatePresence>
 
+
       <AnimatePresence>
-        {selectedGame && (
+        {isSuggestionModalOpen && (
+          <SuggestionModal onClose={() => setIsSuggestionModalOpen(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {quotaError && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setSelectedGame(null)}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-8"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-6xl aspect-video bg-[#0f0f0f] rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex flex-col"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#121212] border border-red-500/30 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl text-center p-8"
             >
-              <div className="flex items-center justify-between p-4 border-b border-white/5 bg-black/40 backdrop-blur-md">
-                <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-xl bg-gradient-to-br ${selectedGame.color} shadow-lg`}>
-                    <Gamepad2 className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white leading-tight">{selectedGame.title}</h3>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">{selectedGame.system} • {selectedGame.year}</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setSelectedGame(null)}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-all border border-white/5"
-                >
-                  <X size={24} />
-                </button>
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle className="w-8 h-8 text-red-500" />
               </div>
-              
-              <div className="flex-1 bg-black relative">
-                {GAME_PAYLOADS[selectedGame.id] ? (
-                  <iframe 
-                    srcDoc={GAME_PAYLOADS[selectedGame.id].customHtml}
-                    className="w-full h-full border-none"
-                    title={selectedGame.title}
-                    allow="autoplay; fullscreen; keyboard"
-                  />
-                ) : selectedGame.link ? (
-                  <iframe 
-                    srcDoc={getEmulatorHtml(selectedGame)}
-                    className="w-full h-full border-none"
-                    title={selectedGame.title}
-                    allow="autoplay; fullscreen; keyboard"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-                    <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-6">
-                      <ShieldAlert className="w-10 h-10 text-yellow-500" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Payload Not Found</h3>
-                    <p className="text-neutral-500 max-w-md italic">"The digital signature for this title is missing from our archives. Please check back later."</p>
-                  </div>
-                )}
-              </div>
+              <h2 className="text-2xl font-black italic uppercase tracking-widest text-white mb-4">Quota Exceeded</h2>
+              <p className="text-neutral-400 mb-8 font-medium">
+                {quotaError}
+              </p>
+              <p className="text-sm text-neutral-500 mb-8">
+                Detailed quota information can be found under the Spark plan column in the Enterprise edition section of <a href="https://firebase.google.com/pricing#cloud-firestore" target="_blank" rel="noreferrer" className="text-accent hover:underline">Firebase Pricing</a>.
+              </p>
+              <button 
+                onClick={() => setQuotaError(null)}
+                className="w-full py-4 bg-white text-black rounded-xl font-black uppercase tracking-widest hover:scale-[1.02] transition-all"
+              >
+                Dismiss
+              </button>
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {isSuggestionModalOpen && (
-          <SuggestionModal onClose={() => setIsSuggestionModalOpen(false)} />
         )}
       </AnimatePresence>
     </div>

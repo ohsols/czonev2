@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, deleteDoc, updateDoc, limit } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, getDocs, serverTimestamp, doc, deleteDoc, updateDoc, limit } from 'firebase/firestore';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
-import { Send, Trash2, Edit2, Check, X, ShieldCheck, Smile, DollarSign, MessageSquare, AlertCircle, Zap } from 'lucide-react';
+import { Send, Trash2, Edit2, Check, X, ShieldCheck, Smile, DollarSign, MessageSquare, AlertCircle, Zap, RefreshCw } from 'lucide-react';
 
 interface ChatRoomProps {
   collectionName?: string;
@@ -47,17 +47,21 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'), limit(100));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+  const fetchMessages = async () => {
+    try {
+      const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'), limit(100));
+      const snapshot = await getDocs(q);
       const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).reverse();
       setMessages(newMessages);
-    }, (err) => {
-      console.error("ChatRoom onSnapshot error:", err);
+    } catch (err) {
+      console.error("ChatRoom fetch error:", err);
       setError("Failed to load messages. Please check your permissions.");
       handleFirestoreError(err, OperationType.LIST, collectionName);
-    });
-    return unsubscribe;
+    }
+  };
+
+  useEffect(() => {
+    fetchMessages();
   }, [collectionName]);
 
   useEffect(() => {
@@ -168,6 +172,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
             <p className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">Live Community Discussion</p>
           </div>
         </div>
+        <button onClick={fetchMessages} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-all border border-white/5">
+          <RefreshCw size={16} />
+        </button>
         <AnimatePresence>
           {error && (
             <motion.div 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check, Ban, UserCheck } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, auth, OperationType, handleFirestoreError } from '../firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs, limit } from 'firebase/firestore';
 
 interface User {
   uid: string;
@@ -72,68 +72,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [userSearchQuery, setUserSearchQuery] = useState('');
 
   useEffect(() => {
-    const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(1000));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Announcement[];
-      setAnnouncements(data);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'site_announcements');
-    });
+    const fetchData = async () => {
+      try {
+        const qAnnouncements = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(1000));
+        const snapshotAnnouncements = await getDocs(qAnnouncements);
+        setAnnouncements(snapshotAnnouncements.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Announcement[]);
 
-    const qSuggestions = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(1000));
-    const unsubscribeSuggestions = onSnapshot(qSuggestions, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Suggestion[];
-      setSuggestions(data);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'suggestions');
-    });
+        const qSuggestions = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(1000));
+        const snapshotSuggestions = await getDocs(qSuggestions);
+        setSuggestions(snapshotSuggestions.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Suggestion[]);
 
-    const qAdmins = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(1000));
-    const unsubscribeAdmins = onSnapshot(qAdmins, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as AllowedAdmin[];
-      setAllowedAdmins(data);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'allowed_admins');
-    });
+        const qAdmins = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(1000));
+        const snapshotAdmins = await getDocs(qAdmins);
+        setAllowedAdmins(snapshotAdmins.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AllowedAdmin[]);
 
-    const qUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(1000));
-    const unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        uid: doc.id,
-        ...doc.data()
-      })) as User[];
-      setUsers(data);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'users');
-    });
+        const qUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(1000));
+        const snapshotUsers = await getDocs(qUsers);
+        setUsers(snapshotUsers.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[]);
 
-    const qAppeals = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(1000));
-    const unsubscribeAppeals = onSnapshot(qAppeals, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Appeal[];
-      setAppeals(data);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'appeals');
-    });
-
-    return () => {
-      unsubscribe();
-      unsubscribeSuggestions();
-      unsubscribeAdmins();
-      unsubscribeUsers();
-      unsubscribeAppeals();
+        const qAppeals = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(1000));
+        const snapshotAppeals = await getDocs(qAppeals);
+        setAppeals(snapshotAppeals.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appeal[]);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.LIST, 'admin_dashboard_data');
+      }
     };
+    fetchData();
   }, []);
 
   const handleAddAnnouncement = async (e: React.FormEvent) => {
