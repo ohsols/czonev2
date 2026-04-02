@@ -24,8 +24,18 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
   const [replyTo, setReplyTo] = useState<{ id: string, text: string, displayName: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [banConfirm, setBanConfirm] = useState<{ uid: string, displayName: string } | null>(null);
+  const isAtBottomRef = useRef(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      // If we are within 100px of the bottom, consider it "at bottom"
+      isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 100;
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -51,7 +61,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
   }, [collectionName]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isAtBottomRef.current && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -79,6 +91,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
       });
       setNewMessage('');
       setReplyTo(null);
+      isAtBottomRef.current = true;
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
     } catch (err) {
       setError("Failed to send message. You might be using prohibited language.");
       setTimeout(() => setError(null), 3000);
@@ -166,7 +182,11 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
           )}
         </AnimatePresence>
       </div>
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4 custom-scrollbar">
+      <div 
+        ref={chatContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto space-y-4 mb-4 custom-scrollbar"
+      >
         {messages.map((msg) => (
           <div key={msg.id} className={`flex flex-col ${msg.uid === auth.currentUser?.uid ? 'items-end' : 'items-start'}`}>
             {msg.role && (msg.role === 'admin' || msg.role === 'super-admin' || msg.role === 'donator') && (

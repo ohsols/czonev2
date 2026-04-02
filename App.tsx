@@ -20,6 +20,7 @@ import ChatRoom from './components/ChatRoom';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import SuggestionModal from './components/SuggestionModal';
+import AppealModal from './components/AppealModal';
 import { SiteAnnouncements } from './components/SiteAnnouncements';
 import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, MessageSquare, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit, ChevronDown, LayoutGrid, Gamepad2, ShieldCheck, LogOut, LogIn, Send } from 'lucide-react';
 
@@ -173,6 +174,7 @@ const App: React.FC = () => {
   const [isUpdateLogOpen, setIsUpdateLogOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAppealModalOpen, setIsAppealModalOpen] = useState(false);
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
   const [hasOpenedUpdateLog, setHasOpenedUpdateLog] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -464,13 +466,77 @@ const App: React.FC = () => {
           <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-2xl mb-8">
             <p className="text-[10px] font-black uppercase tracking-widest text-red-500/60">Protocol: Violation-403</p>
           </div>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => setIsAppealModalOpen(true)}
+              className="w-full py-4 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-accent/20"
+            >
+              Appeal Ban
+            </button>
+            <button 
+              onClick={() => logout()}
+              className="w-full py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs transition-all border border-white/5"
+            >
+              Logout
+            </button>
+          </div>
+        </motion.div>
+        <AppealModal 
+          isOpen={isAppealModalOpen} 
+          onClose={() => setIsAppealModalOpen(false)} 
+          userEmail={user?.email || ''} 
+          userId={user?.uid || ''} 
+        />
+      </div>
+    );
+  }
+
+  if (!user && isAuthReady) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center p-6 text-center">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full opacity-60" style={{ background: 'var(--accent-glow-dim)', filter: 'blur(160px)', transform: 'translateZ(0)' }}></div>
+          <div className="absolute -bottom-40 -left-40 w-[800px] h-[800px] rounded-full opacity-60" style={{ background: 'var(--accent-glow-dim)', filter: 'blur(180px)', transform: 'translateZ(0)' }}></div>
+        </div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full bg-[#0a0a0a] border border-white/10 rounded-[32px] p-12 shadow-2xl relative z-10"
+        >
+          <div className="w-24 h-24 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-8 border border-accent/20">
+            <Zap className="w-12 h-12 text-accent" />
+          </div>
+          <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white mb-4">ChillZone</h1>
+          <p className="text-neutral-400 text-sm leading-relaxed mb-8">
+            Please sign up or log in to access the platform. Join our community to enjoy movies, music, and more.
+          </p>
           <button 
-            onClick={() => logout()}
-            className="w-full py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs transition-all border border-white/5"
+            onClick={() => setIsAuthModalOpen(true)}
+            className="w-full py-4 rounded-2xl bg-accent text-white font-black uppercase tracking-widest text-sm transition-all shadow-lg shadow-accent/20"
           >
-            Logout
+            Get Started
           </button>
         </motion.div>
+        
+        <AnimatePresence>
+          {isAuthModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 md:p-8"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative w-full max-w-md bg-[#0a0a0a] rounded-3xl overflow-hidden border border-white/10 shadow-2xl"
+              >
+                <AuthModal onClose={() => setIsAuthModalOpen(false)} showCloseButton={false} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

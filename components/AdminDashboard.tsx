@@ -14,6 +14,15 @@ interface User {
   createdAt: Timestamp;
 }
 
+interface Appeal {
+  id: string;
+  userId: string;
+  userEmail: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'denied';
+  createdAt: Timestamp;
+}
+
 interface Announcement {
   id: string;
   title: string;
@@ -49,6 +58,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [allowedAdmins, setAllowedAdmins] = useState<AllowedAdmin[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
@@ -56,8 +66,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'announcements' | 'suggestions' | 'users' | 'admins' | 'analytics'>('announcements');
+  const [activeTab, setActiveTab] = useState<'announcements' | 'suggestions' | 'users' | 'admins' | 'analytics' | 'appeals'>('announcements');
   const [suggestionFilter, setSuggestionFilter] = useState<'all' | 'pending' | 'reviewed'>('all');
+  const [appealFilter, setAppealFilter] = useState<'all' | 'pending' | 'approved' | 'denied'>('all');
   const [userSearchQuery, setUserSearchQuery] = useState('');
 
   useEffect(() => {
@@ -105,11 +116,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       handleFirestoreError(err, OperationType.LIST, 'users');
     });
 
+    const qAppeals = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(10000));
+    const unsubscribeAppeals = onSnapshot(qAppeals, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Appeal[];
+      setAppeals(data);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'appeals');
+    });
+
     return () => {
       unsubscribe();
       unsubscribeSuggestions();
       unsubscribeAdmins();
       unsubscribeUsers();
+      unsubscribeAppeals();
     };
   }, []);
 
@@ -192,11 +215,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       await updateDoc(doc(db, 'users', uid), {
         banned: !currentBanned
       });
+      
+      // If unbanning, also mark any pending appeals as approved
+      if (currentBanned) {
+        const pendingAppeals = appeals.filter(a => a.userId === uid && a.status === 'pending');
+        for (const appeal of pendingAppeals) {
+          await updateDoc(doc(db, 'appeals', appeal.id), { status: 'approved' });
+        }
+      }
+
       setSuccess(`User ${!currentBanned ? 'banned' : 'unbanned'} successfully!`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(`Failed to ${!currentBanned ? 'ban' : 'unban'} user.`);
       handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
+    }
+  };
+
+  const handleAppealAction = async (appealId: string, userId: string, action: 'approved' | 'denied') => {
+    try {
+      await updateDoc(doc(db, 'appeals', appealId), { status: action });
+      if (action === 'approved') {
+        await updateDoc(doc(db, 'users', userId), { banned: false });
+      }
+      setSuccess(`Appeal ${action} successfully!`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(`Failed to ${action} appeal.`);
+      handleFirestoreError(err, OperationType.UPDATE, `appeals/${appealId}`);
     }
   };
 
@@ -277,6 +323,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
         {[
           { id: 'announcements', icon: Megaphone, label: 'Announcements' },
           { id: 'suggestions', icon: Send, label: 'Suggestions' },
+          { id: 'appeals', icon: AlertCircle, label: 'Appeals' },
           { id: 'analytics', icon: Activity, label: 'Analytics' },
           ...(isSuperAdmin || isAdmin ? [
             { id: 'users', icon: Users, label: 'User Management' },
@@ -460,7 +507,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
               <h3 className="text-sm font-black uppercase tracking-widest text-neutral-500">User Management</h3>
               <input
                 type="text"
-                placeholder="Search by email..."
+                placeholder="Search by email or username..."
                 value={userSearchQuery}
                 onChange={(e) => setUserSearchQuery(e.target.value)}
                 className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-accent/50 w-64"
@@ -468,13 +515,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
             </div>
             {users.filter(user => {
               if (!userSearchQuery) return true;
-              return user.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+              const q = userSearchQuery.toLowerCase();
+              return user.email?.toLowerCase().includes(q) || user.displayName?.toLowerCase().includes(q);
             }).length === 0 ? (
               <div className="text-center py-12 text-neutral-600 italic text-sm">No users found.</div>
             ) : (
               users.filter(user => {
                 if (!userSearchQuery) return true;
-                return user.email?.toLowerCase().includes(userSearchQuery.toLowerCase());
+                const q = userSearchQuery.toLowerCase();
+                return user.email?.toLowerCase().includes(q) || user.displayName?.toLowerCase().includes(q);
               }).map((user) => (
                 <div key={user.uid} className="bg-white/5 border border-white/5 rounded-2xl p-5 flex items-center justify-between group hover:border-white/10 transition-all">
                   <div className="flex items-center gap-4">
@@ -610,8 +659,66 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
             </div>
           </div>
         )}
-        {activeTab === 'analytics' && (
-          <AnalyticsTab />
+        {activeTab === 'appeals' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black uppercase tracking-widest text-neutral-500">Ban Appeals</h3>
+              <div className="flex gap-2">
+                {(['all', 'pending', 'approved', 'denied'] as const).map(filter => (
+                  <button
+                    key={filter}
+                    onClick={() => setAppealFilter(filter)}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                      appealFilter === filter ? 'bg-accent text-white' : 'bg-white/5 text-neutral-500 hover:text-white'
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {appeals.filter(a => appealFilter === 'all' || a.status === appealFilter).length === 0 ? (
+              <div className="text-center py-12 text-neutral-600 italic text-sm">No appeals found.</div>
+            ) : (
+              appeals.filter(a => appealFilter === 'all' || a.status === appealFilter).map((appeal) => (
+                <div key={appeal.id} className="bg-white/5 border border-white/5 rounded-2xl p-5 flex items-start justify-between group hover:border-white/10 transition-all">
+                  <div className="space-y-2 flex-1 pr-4">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-white text-sm">{appeal.userEmail}</h4>
+                      <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                        appeal.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' : 
+                        appeal.status === 'approved' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+                      }`}>
+                        {appeal.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-neutral-300 leading-relaxed break-words">{appeal.reason}</p>
+                    <p className="text-[9px] font-mono text-neutral-600">
+                      {appeal.createdAt?.toDate().toLocaleString() || 'Just now'}
+                    </p>
+                  </div>
+                  {appeal.status === 'pending' && (
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                      <button 
+                        onClick={() => handleAppealAction(appeal.id, appeal.userId, 'approved')}
+                        className="p-2 rounded-lg bg-green-500/10 hover:bg-green-500/20 text-green-500 transition-colors"
+                        title="Approve Appeal (Unban)"
+                      >
+                        <UserCheck size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleAppealAction(appeal.id, appeal.userId, 'denied')}
+                        className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                        title="Deny Appeal"
+                      >
+                        <Ban size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         )}
       </div>
     </div>

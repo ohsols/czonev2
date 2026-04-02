@@ -5,9 +5,10 @@ import { signInWithGoogle, signUpWithEmail, loginWithEmail } from '../firebase';
 
 interface AuthModalProps {
   onClose: () => void;
+  showCloseButton?: boolean;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ onClose, showCloseButton = true }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,9 +66,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose }) => {
             {mode === 'login' ? 'Sign in to your account' : 'Join the ChillZone community'}
           </p>
         </div>
-        <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-all">
-          <X size={20} />
-        </button>
+        {showCloseButton && (
+          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-all">
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
