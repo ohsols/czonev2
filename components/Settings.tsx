@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { VenetianMask, Palette, ChevronDown, Edit2, X, ExternalLink, Globe } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { VenetianMask, Palette, ChevronDown, Edit2, X, ExternalLink, Globe, User, Trash2, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { deleteUser } from 'firebase/auth';
 
 export type ThemeColors = {
   bg: string;
@@ -222,6 +223,7 @@ const menuItems = [
   { id: 'theme', label: 'Theme', icon: Palette },
   { id: 'cloak', label: 'Cloak', icon: VenetianMask },
   { id: 'language', label: 'Language', icon: Globe },
+  { id: 'account', label: 'Account', icon: User },
 ];
 
 const LANGUAGES = [
@@ -372,6 +374,44 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const [customIcon, setCustomIcon] = useState(localStorage.getItem('faviconUrl') || 'https://www.google.com/favicon.ico');
 
   const { language, setLanguage, militaryTime, setMilitaryTime, timeZone, setTimeZone, t } = useLanguage();
+
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') return;
+    if (!auth.currentUser) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const user = auth.currentUser;
+      const userId = user.uid;
+
+      // 1. Delete Firestore document
+      await deleteDoc(doc(db, 'users', userId));
+
+      // 2. Delete Auth account
+      await deleteUser(user);
+
+      // 3. Close settings and refresh or redirect
+      onClose();
+      window.location.href = '/';
+    } catch (err: any) {
+      console.error("Error deleting account:", err);
+      if (err.code === 'auth/requires-recent-login') {
+        setDeleteError("This action requires a recent login. Please log out and log back in, then try again.");
+      } else {
+        setDeleteError("Failed to delete account. Please try again later.");
+        handleFirestoreError(err, OperationType.DELETE, `users/${auth.currentUser?.uid}`);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const activeTheme = customThemes[currentThemeId] || defaultThemes.chillzone;
 
@@ -751,6 +791,102 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
                       onChange={setTimeZone}
                       options={TIME_ZONES.map((tz: any) => ({ value: tz.value, label: tz.value === 'auto' ? t('System Default') : tz.label }))}
                     />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeSection === 'account' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-1">{t('Account')}</h2>
+                <p className="text-xs opacity-60">{t('Manage your account settings.')}</p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-surface border border-border rounded-xl p-6">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-accent">
+                      {auth.currentUser?.photoURL ? (
+                        <img src={auth.currentUser.photoURL} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <User size={32} />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold">{auth.currentUser?.displayName || 'User'}</h3>
+                      <p className="text-sm text-text-secondary">{auth.currentUser?.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-border">
+                    <h4 className="text-sm font-black uppercase tracking-widest text-red-500 mb-4 flex items-center gap-2">
+                      <AlertTriangle size={16} />
+                      {t('Danger Zone')}
+                    </h4>
+                    
+                    {!isDeletingAccount ? (
+                      <button 
+                        onClick={() => setIsDeletingAccount(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-sm font-bold hover:bg-red-500/20 transition-all"
+                      >
+                        <Trash2 size={16} />
+                        {t('Delete Account')}
+                      </button>
+                    ) : (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="space-y-4"
+                      >
+                        <p className="text-sm text-text-secondary">
+                          {t('This action is permanent and cannot be undone.')}
+                        </p>
+                        
+                        <div>
+                          <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">
+                            {t('Type "DELETE" to confirm')}
+                          </label>
+                          <input 
+                            type="text"
+                            value={deleteConfirmation}
+                            onChange={(e) => setDeleteConfirmation(e.target.value)}
+                            placeholder="DELETE"
+                            className="w-full bg-bg border border-red-500/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-red-500 transition-colors text-white"
+                          />
+                        </div>
+
+                        {deleteError && (
+                          <p className="text-xs text-red-500 font-bold">{deleteError}</p>
+                        )}
+
+                        <div className="flex gap-3">
+                          <button 
+                            disabled={isDeleting || deleteConfirmation !== 'DELETE'}
+                            onClick={handleDeleteAccount}
+                            className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isDeleting ? t('Deleting...') : t('Confirm Deletion')}
+                          </button>
+                          <button 
+                            disabled={isDeleting}
+                            onClick={() => {
+                              setIsDeletingAccount(false);
+                              setDeleteConfirmation('');
+                              setDeleteError(null);
+                            }}
+                            className="flex-1 bg-surface border border-border text-text-primary py-2 rounded-lg text-sm font-black uppercase tracking-widest hover:bg-surface-hover transition-all"
+                          >
+                            {t('Cancel')}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
                 </div>
               </div>

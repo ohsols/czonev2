@@ -78,7 +78,16 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     'Direct Transfer': 'Direct Transfer',
     'SOURCE': 'SOURCE',
     'You are about to leave Chillzone to view': 'You are about to leave Chillzone to view',
-    'socials. Proceed with caution.': 'socials. Proceed with caution.'
+    'socials. Proceed with caution.': 'socials. Proceed with caution.',
+    'Account': 'Account',
+    'Manage your account settings.': 'Manage your account settings.',
+    'Danger Zone': 'Danger Zone',
+    'Delete Account': 'Delete Account',
+    'This action is permanent and cannot be undone.': 'This action is permanent and cannot be undone.',
+    'Type "DELETE" to confirm': 'Type "DELETE" to confirm',
+    'Confirm Deletion': 'Confirm Deletion',
+    'Cancel': 'Cancel',
+    'Deleting...': 'Deleting...'
   },
   'es-ES': {
     'Theme': 'Tema',
@@ -154,7 +163,16 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     'Direct Transfer': 'Transferencia Directa',
     'SOURCE': 'FUENTE',
     'You are about to leave Chillzone to view': 'Estás a punto de salir de Chillzone para ver',
-    'socials. Proceed with caution.': 'redes sociales. Procede con precaución.'
+    'socials. Proceed with caution.': 'redes sociales. Procede con precaución.',
+    'Account': 'Cuenta',
+    'Manage your account settings.': 'Administra la configuración de tu cuenta.',
+    'Danger Zone': 'Zona de Peligro',
+    'Delete Account': 'Eliminar Cuenta',
+    'This action is permanent and cannot be undone.': 'Esta acción es permanente y no se puede deshacer.',
+    'Type "DELETE" to confirm': 'Escribe "DELETE" para confirmar',
+    'Confirm Deletion': 'Confirmar Eliminación',
+    'Cancel': 'Cancelar',
+    'Deleting...': 'Eliminando...'
   },
   'fr-FR': {
     'Theme': 'Thème',

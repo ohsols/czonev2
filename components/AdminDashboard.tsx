@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check, Ban, UserCheck, Upload, Loader2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, auth, OperationType, handleFirestoreError } from '../firebase';
-import { collection, addDoc, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs, limit, onSnapshot } from 'firebase/firestore';
 
 interface User {
   uid: string;
@@ -103,40 +103,64 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'co-owner' | 'owner' | 'user' | 'donator' | 'tester'>('all');
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        if (activeTab === 'announcements') {
-          const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(100));
-          const snapshot = await getDocs(q);
+    if (activeTab === 'analytics' || activeTab === 'upload') return;
+
+    setIsLoading(true);
+    let unsubscribe: () => void = () => {};
+
+    try {
+      if (activeTab === 'announcements') {
+        const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(100));
+        unsubscribe = onSnapshot(q, (snapshot) => {
           setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Announcement[]);
-        } else if (activeTab === 'suggestions') {
-          const q = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(100));
-          const snapshot = await getDocs(q);
+          setIsLoading(false);
+        }, (err) => {
+          handleFirestoreError(err, OperationType.LIST, 'site_announcements');
+          setIsLoading(false);
+        });
+      } else if (activeTab === 'suggestions') {
+        const q = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(100));
+        unsubscribe = onSnapshot(q, (snapshot) => {
           setSuggestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Suggestion[]);
-        } else if (activeTab === 'admins') {
-          const q = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(100));
-          const snapshot = await getDocs(q);
+          setIsLoading(false);
+        }, (err) => {
+          handleFirestoreError(err, OperationType.LIST, 'suggestions');
+          setIsLoading(false);
+        });
+      } else if (activeTab === 'admins') {
+        const q = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(100));
+        unsubscribe = onSnapshot(q, (snapshot) => {
           setAllowedAdmins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AllowedAdmin[]);
-        } else if (activeTab === 'users' || activeTab === 'banned') {
-          const q = query(collection(db, 'users'), limit(500));
-          const snapshot = await getDocs(q);
+          setIsLoading(false);
+        }, (err) => {
+          handleFirestoreError(err, OperationType.LIST, 'allowed_admins');
+          setIsLoading(false);
+        });
+      } else if (activeTab === 'users' || activeTab === 'banned') {
+        const q = query(collection(db, 'users'), limit(500));
+        unsubscribe = onSnapshot(q, (snapshot) => {
           setUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[]);
-        } else if (activeTab === 'appeals') {
-          const q = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(100));
-          const snapshot = await getDocs(q);
+          setIsLoading(false);
+        }, (err) => {
+          handleFirestoreError(err, OperationType.LIST, 'users');
+          setIsLoading(false);
+        });
+      } else if (activeTab === 'appeals') {
+        const q = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(100));
+        unsubscribe = onSnapshot(q, (snapshot) => {
           setAppeals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appeal[]);
-        }
-      } catch (err) {
-        handleFirestoreError(err, OperationType.LIST, `admin_dashboard_${activeTab}`);
-      } finally {
-        setIsLoading(false);
+          setIsLoading(false);
+        }, (err) => {
+          handleFirestoreError(err, OperationType.LIST, 'appeals');
+          setIsLoading(false);
+        });
       }
-    };
-    
-    if (activeTab !== 'analytics' && activeTab !== 'upload') {
-      fetchData();
+    } catch (err) {
+      console.error("Error setting up listeners:", err);
+      setIsLoading(false);
     }
+
+    return () => unsubscribe();
   }, [activeTab]);
 
   const handleAddAnnouncement = async (e: React.FormEvent) => {
@@ -247,10 +271,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
 
   const handleUpdateUserRole = async (uid: string, newRole: 'admin' | 'co-owner' | 'owner' | 'user' | 'donator' | 'tester') => {
     try {
-      await setDoc(doc(db, 'users', uid), {
+      await updateDoc(doc(db, 'users', uid), {
         role: newRole
-      }, { merge: true });
+      });
+      setSuccess(`User role updated to ${newRole} successfully!`);
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
+      setError('Failed to update user role.');
       handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
     }
   };
