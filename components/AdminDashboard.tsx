@@ -223,8 +223,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       const qUsers = query(usersRef, where('role', 'in', adminRoles), limit(500));
       const userSnapshot = await getDocs(qUsers);
       console.log(`Found ${userSnapshot.docs.length} users with admin roles.`);
+      const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
       const updatePromises = userSnapshot.docs
-        .filter(docSnap => docSnap.data().email?.toLowerCase() !== 'darkfn1234567890@gmail.com')
+        .filter(docSnap => docSnap.id !== superAdminUid)
         .map(docSnap => {
           console.log(`Demoting user: ${docSnap.data().email} (${docSnap.id})`);
           return setDoc(doc(db, 'users', docSnap.id), { role: 'user' }, { merge: true });
@@ -233,7 +234,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       console.log('Users demoted.');
       
       // Refresh users list
-      setUsers(prev => prev.map(u => u.email?.toLowerCase() !== 'darkfn1234567890@gmail.com' && (u.role === 'admin' || u.role === 'co-owner' || u.role === 'owner') ? {...u, role: 'user'} : u));
+      setUsers(prev => prev.map(u => u.uid !== superAdminUid && (u.role === 'admin' || u.role === 'co-owner' || u.role === 'owner') ? {...u, role: 'user'} : u));
 
       setSuccess('All other admins removed and roles reset successfully!');
       setTimeout(() => setSuccess(null), 3000);
@@ -648,7 +649,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
                         )}
                       </select>
                       
-                      {user.email?.toLowerCase() !== 'darkfn1234567890@gmail.com' && user.email?.toLowerCase() !== 'whitecaleb888@gmail.com' && (
+                      {user.uid !== 'HfjrcUIslZPCvNI3fxiQJVK1ebB3' && user.email?.toLowerCase() !== 'whitecaleb888@gmail.com' && (
                         <button
                           onClick={() => handleToggleBan(user.uid, !!user.banned)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${

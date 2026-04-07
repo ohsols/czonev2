@@ -234,9 +234,10 @@ const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       console.log("Auth state changed:", currentUser?.email);
       setUser(currentUser);
-      const isAdminEmail = currentUser?.email === 'darkfn1234567890@gmail.com' || currentUser?.email === 'whitecaleb888@gmail.com';
-      setIsAdmin(isAdminEmail)
-      setIsSuperAdmin(currentUser?.email === 'darkfn1234567890@gmail.com')
+      const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
+      const isSuperAdminUser = currentUser?.uid === superAdminUid;
+      setIsSuperAdmin(isSuperAdminUser);
+      // Admin status will be updated by the database listener
       setIsAuthReady(true);
       if (currentUser) {
         setIsAuthModalOpen(false);
@@ -293,13 +294,14 @@ const App: React.FC = () => {
           root.dataset.theme = data.theme;
         }
         
-        // Update admin status based on role in database
-        const email = user.email?.toLowerCase();
-        const isAppOwner = email === 'darkfn1234567890@gmail.com';
-        const isOtherAdmin = email === 'whitecaleb888@gmail.com';
-        setIsAdmin(isAppOwner || isOtherAdmin || data.role === 'admin' || data.role === 'co-owner' || data.role === 'owner');
-        setIsSuperAdmin(isAppOwner);
-        setIsBanned(!!data.banned);
+        // Update admin status based on role in database and super admin UID
+        const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
+        const isSuperAdminUser = user.uid === superAdminUid;
+        const isAdminRole = ['admin', 'co-owner', 'owner'].includes(data.role || '');
+        
+        setIsSuperAdmin(isSuperAdminUser);
+        setIsAdmin(isSuperAdminUser || isAdminRole || user.email === 'whitecaleb888@gmail.com');
+        setIsBanned(data.banned === true && !isSuperAdminUser);
       }
     }, (err) => {
       handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
