@@ -11,7 +11,7 @@ interface User {
   displayName: string | null;
   role: 'admin' | 'co-owner' | 'owner' | 'user' | 'donator';
   banned?: boolean;
-  createdAt: Timestamp;
+  createdAt?: Timestamp;
 }
 
 interface Appeal {
@@ -66,10 +66,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'announcements' | 'suggestions' | 'users' | 'admins' | 'analytics' | 'appeals'>('announcements');
+  const [activeTab, setActiveTab] = useState<'announcements' | 'suggestions' | 'users' | 'admins' | 'analytics' | 'appeals' | 'banned'>('announcements');
   const [suggestionFilter, setSuggestionFilter] = useState<'all' | 'pending' | 'reviewed'>('all');
   const [appealFilter, setAppealFilter] = useState<'all' | 'pending' | 'approved' | 'denied'>('all');
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'co-owner' | 'owner' | 'user' | 'donator' | 'tester'>('all');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,7 +87,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
         const snapshotAdmins = await getDocs(qAdmins);
         setAllowedAdmins(snapshotAdmins.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AllowedAdmin[]);
 
-        const qUsers = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(1000));
+        const qUsers = query(collection(db, 'users'), limit(5000));
         const snapshotUsers = await getDocs(qUsers);
         setUsers(snapshotUsers.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[]);
 
@@ -291,6 +292,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
           { id: 'analytics', icon: Activity, label: 'Analytics' },
           ...(isSuperAdmin || isAdmin ? [
             { id: 'users', icon: Users, label: 'User Management' },
+            { id: 'banned', icon: Ban, label: 'Banned Users' },
             { id: 'admins', icon: ShieldCheck, label: 'Manage Admins' }
           ] : [])
         ].map((tab) => (
@@ -469,25 +471,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-black uppercase tracking-widest text-neutral-500">User Management</h3>
-              <input
-                type="text"
-                placeholder="Search by email or username..."
-                value={userSearchQuery}
-                onChange={(e) => setUserSearchQuery(e.target.value)}
-                className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-accent/50 w-64"
-              />
+              <div className="flex gap-2">
+                <select 
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value as any)}
+                  className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white focus:outline-none focus:border-accent/50 transition-all cursor-pointer"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="co-owner">Co-Owner</option>
+                  <option value="owner">Owner</option>
+                  <option value="donator">Donator</option>
+                  <option value="tester">Tester</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Search by email or username..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-accent/50 w-64"
+                />
+              </div>
             </div>
             {users.filter(user => {
-              if (!userSearchQuery) return true;
-              const q = userSearchQuery.toLowerCase();
-              return user.email?.toLowerCase().includes(q) || user.displayName?.toLowerCase().includes(q);
+              const matchesSearch = !userSearchQuery || user.email?.toLowerCase().includes(userSearchQuery.toLowerCase()) || user.displayName?.toLowerCase().includes(userSearchQuery.toLowerCase());
+              const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+              return matchesSearch && matchesRole && !user.banned;
             }).length === 0 ? (
               <div className="text-center py-12 text-neutral-600 italic text-sm">No users found.</div>
             ) : (
               users.filter(user => {
-                if (!userSearchQuery) return true;
-                const q = userSearchQuery.toLowerCase();
-                return user.email?.toLowerCase().includes(q) || user.displayName?.toLowerCase().includes(q);
+                const matchesSearch = !userSearchQuery || user.email?.toLowerCase().includes(userSearchQuery.toLowerCase()) || user.displayName?.toLowerCase().includes(userSearchQuery.toLowerCase());
+                const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+                return matchesSearch && matchesRole && !user.banned;
               }).map((user) => (
                 <div key={user.uid} className="bg-white/5 border border-white/5 rounded-2xl p-5 flex items-center justify-between group hover:border-white/10 transition-all">
                   <div className="flex items-center gap-4">
@@ -543,6 +560,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
                       )}
                     </div>
                   </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {(isSuperAdmin || isAdmin) && activeTab === 'banned' && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-widest text-neutral-500">Banned Users</h3>
+            {users.filter(user => user.banned).length === 0 ? (
+              <div className="text-center py-12 text-neutral-600 italic text-sm">No banned users found.</div>
+            ) : (
+              users.filter(user => user.banned).map((user) => (
+                <div key={user.uid} className="bg-white/5 border border-white/5 rounded-2xl p-5 flex items-center justify-between group hover:border-white/10 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 font-bold">
+                      {user.displayName?.charAt(0) || user.email?.charAt(0) || '?'}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white">{user.displayName || 'Anonymous'}</h4>
+                      <p className="text-xs text-neutral-400">{user.email}</p>
+                      <p className="text-[10px] text-red-500 mt-1 font-bold uppercase tracking-widest">Banned</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleBan(user.uid, !!user.banned)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all bg-green-500/10 text-green-500 hover:bg-green-500/20"
+                  >
+                    <UserCheck size={12} />
+                    Unban
+                  </button>
                 </div>
               ))
             )}

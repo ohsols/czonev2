@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
-import { collection, addDoc, query, orderBy, getDocs, serverTimestamp, doc, deleteDoc, updateDoc, limit } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, getDocs, getDoc, serverTimestamp, doc, deleteDoc, updateDoc, limit } from 'firebase/firestore';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
 import { Send, Trash2, Edit2, Check, X, ShieldCheck, Smile, DollarSign, MessageSquare, AlertCircle, Zap, RefreshCw } from 'lucide-react';
 
@@ -23,7 +23,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
   const [editValue, setEditValue] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string, text: string, displayName: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [banConfirm, setBanConfirm] = useState<{ uid: string, displayName: string } | null>(null);
+  const [banConfirm, setBanConfirm] = useState<{ uid: string, displayName: string, email?: string } | null>(null);
   const isAtBottomRef = useRef(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -218,7 +218,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
               <div className="flex justify-between items-center mb-1">
                 <p 
                   className={`text-xs font-bold opacity-70 ${isSuperAdmin && msg.uid !== auth.currentUser?.uid ? 'cursor-pointer hover:text-red-500 transition-colors' : ''}`}
-                  onClick={() => isSuperAdmin && msg.uid !== auth.currentUser?.uid && setBanConfirm({ uid: msg.uid, displayName: msg.displayName })}
+                  onClick={async () => {
+                    if (isSuperAdmin && msg.uid !== auth.currentUser?.uid) {
+                      const userDoc = await getDoc(doc(db, 'users', msg.uid));
+                      const email = userDoc.exists() ? userDoc.data().email : 'Unknown';
+                      setBanConfirm({ uid: msg.uid, displayName: msg.displayName, email });
+                    }
+                  }}
                   title={isSuperAdmin && msg.uid !== auth.currentUser?.uid ? "Click to ban user" : ""}
                 >
                   {msg.displayName}
@@ -332,7 +338,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
               </div>
               <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2">Ban User?</h3>
               <p className="text-neutral-400 text-sm mb-8">
-                Are you sure you want to ban <span className="text-white font-bold">{banConfirm.displayName}</span>? This will prevent them from using the platform.
+                Are you sure you want to ban <span className="text-white font-bold">{banConfirm.displayName}</span> ({banConfirm.email})? This will prevent them from using the platform.
               </p>
               <div className="flex gap-3">
                 <button 
