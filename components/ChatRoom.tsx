@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { auth } from '../firebase';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
-import axios from 'axios';
 import { Send, Trash2, Edit2, Check, X, ShieldCheck, Smile, DollarSign, MessageSquare, AlertCircle, Zap, Ban, Loader2, Wifi, WifiOff } from 'lucide-react';
 
 interface ChatRoomProps {
@@ -38,14 +37,47 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
   };
 
   const fetchMessages = async () => {
+    console.log('Fetching messages...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     try {
-      const response = await axios.get('/api/chat/messages');
-      setMessages(response.data);
-      setIsLoading(false);
+      const response = await fetch('/api/chat/messages', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Fetched messages:', data.length);
+      setMessages(data);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error('Failed to fetch messages:', err);
-      setError('Connection error. Retrying...');
+      
+      // Try health check to see if API is up at all
+      try {
+        console.log('Attempting health check...');
+        const healthController = new AbortController();
+        const hTimeoutId = setTimeout(() => healthController.abort(), 3000);
+        
+        const healthResponse = await fetch('/api/health', { signal: healthController.signal });
+        clearTimeout(hTimeoutId);
+        
+        if (healthResponse.ok) {
+          const healthData = await healthResponse.json();
+          console.log('API Health Check Success:', healthData);
+          setError(`Chat API error: ${err.name === 'AbortError' ? 'Timeout' : err.message}. API is UP.`);
+        } else {
+          setError(`Server DOWN: HTTP ${healthResponse.status}. Retrying...`);
+        }
+      } catch (healthErr: any) {
+        console.error('Health check failed:', healthErr);
+        setError(`Server DOWN: ${healthErr.name === 'AbortError' ? 'Timeout' : healthErr.message}. Retrying...`);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -109,7 +141,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ collectionName = 'chat', isAdmin = 
     };
 
     try {
-      await axios.post('/api/chat/messages', messageData);
+      const response = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messageData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       if (!isAdmin && !isSuperAdmin) {
         setCooldownRemaining(3);

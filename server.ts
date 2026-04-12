@@ -23,15 +23,22 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 // In-memory chat store
 const chatMessages: any[] = [];
 const MAX_CHAT_HISTORY = 100;
 
 app.get('/api/chat/messages', (req, res) => {
+  console.log('[API] GET /api/chat/messages');
   res.json(chatMessages);
 });
 
 app.post('/api/chat/messages', (req, res) => {
+  console.log('[API] POST /api/chat/messages', req.body);
   const message = req.body;
   if (!message || !message.text) {
     return res.status(400).json({ error: 'Invalid message' });
