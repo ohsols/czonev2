@@ -228,7 +228,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!user || !isAuthReady || isQuotaExceeded) return;
 
-    const q = query(collection(db, 'uploads'), orderBy('createdAt', 'desc'), limit(20));
+    const q = query(collection(db, 'uploads'), orderBy('createdAt', 'desc'), limit(50));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUploads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {

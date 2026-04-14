@@ -235,7 +235,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
           setIsLoading(false);
         });
       } else if (activeTab === 'suggestions') {
-        const q = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(100));
+        const q = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(500));
         unsubscribe = onSnapshot(q, (snapshot) => {
           console.log(`[AdminDashboard] Suggestions snapshot received: ${snapshot.size} docs`);
           setSuggestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Suggestion[]);
@@ -245,7 +245,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
           setIsLoading(false);
         });
       } else if (activeTab === 'admins') {
-        const q = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(100));
+        const q = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(500));
         unsubscribe = onSnapshot(q, (snapshot) => {
           console.log(`[AdminDashboard] AllowedAdmins snapshot received: ${snapshot.size} docs`);
           setAllowedAdmins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AllowedAdmin[]);
@@ -255,7 +255,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
           setIsLoading(false);
         });
       } else if (activeTab === 'users' || activeTab === 'banned') {
-        const q = query(collection(db, 'users'), limit(50));
+        const q = query(collection(db, 'users'), limit(5000));
         unsubscribe = onSnapshot(q, (snapshot) => {
           console.log(`[AdminDashboard] Users snapshot received: ${snapshot.size} docs`);
           const fetchedUsers = snapshot.docs.map(doc => {
@@ -278,7 +278,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
           setIsLoading(false);
         });
       } else if (activeTab === 'appeals') {
-        const q = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(20));
+        const q = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(50));
         unsubscribe = onSnapshot(q, (snapshot) => {
           console.log(`[AdminDashboard] Appeals snapshot received: ${snapshot.size} docs`);
           setAppeals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appeal[]);
