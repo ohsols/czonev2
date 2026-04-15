@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check, Ban, UserCheck, Upload, Loader2, Settings as SettingsIcon } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check, Ban, UserCheck, Upload, Loader2, ListMusic, Settings as SettingsIcon } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, auth, OperationType, handleFirestoreError, isQuotaExceeded } from '../firebase';
 import { collection, addDoc, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs, getDoc, limit, onSnapshot } from 'firebase/firestore';
@@ -56,6 +56,7 @@ interface AdminDashboardProps {
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, isAdmin }) => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [uploads, setUploads] = useState<any[]>([]);
   const [uploadType, setUploadType] = useState('movie');
   const [uploadTitle, setUploadTitle] = useState('');
   const [driveLink, setDriveLink] = useState('');
@@ -100,7 +101,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [isForceAdding, setIsForceAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'announcements' | 'suggestions' | 'users' | 'admins' | 'analytics' | 'appeals' | 'banned' | 'upload' | 'system'>('announcements');
+  const [activeTab, setActiveTab] = useState<'announcements' | 'suggestions' | 'users' | 'admins' | 'analytics' | 'appeals' | 'banned' | 'upload' | 'manage_uploads' | 'system'>('announcements');
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [suggestionFilter, setSuggestionFilter] = useState<'all' | 'pending' | 'reviewed'>('all');
@@ -224,7 +225,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
     let unsubscribe: () => void = () => {};
 
     try {
-      if (activeTab === 'announcements') {
+      if (activeTab === 'manage_uploads') {
+        const q = query(collection(db, 'uploads'), orderBy('createdAt', 'desc'), limit(100));
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          setUploads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          setIsLoading(false);
+        }, (err) => {
+          handleFirestoreError(err, OperationType.LIST, 'uploads');
+          setIsLoading(false);
+        });
+      } else if (activeTab === 'announcements') {
         const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(50));
         unsubscribe = onSnapshot(q, (snapshot) => {
           console.log(`[AdminDashboard] Announcements snapshot received: ${snapshot.size} docs`);
@@ -347,6 +357,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       await deleteDoc(doc(db, 'site_announcements', id));
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `site_announcements/${id}`);
+    }
+  };
+
+  const handleDeleteUpload = async (id: string) => {
+    if (isQuotaExceeded) return;
+    if (!window.confirm('Are you sure you want to delete this upload?')) return;
+    try {
+      await deleteDoc(doc(db, 'uploads', id));
+      setSuccess('Upload deleted successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to delete upload.');
+      handleFirestoreError(err, OperationType.DELETE, `uploads/${id}`);
     }
   };
 
@@ -596,6 +619,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
           { id: 'appeals', icon: AlertCircle, label: 'Appeals' },
           { id: 'analytics', icon: Activity, label: 'Analytics' },
           { id: 'upload', icon: Upload, label: 'Upload' },
+          { id: 'manage_uploads', icon: ListMusic, label: 'Manage Uploads' },
           { id: 'system', icon: SettingsIcon, label: 'System' },
           ...(isSuperAdmin || isAdmin ? [
             { id: 'users', icon: Users, label: 'User Management' },
@@ -644,6 +668,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
             <input type="text" placeholder="Google Drive Link" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} className="w-full bg-surface border border-white/10 rounded-xl p-3 text-white" />
             <input type="text" placeholder="Image Link" value={imageLink} onChange={(e) => setImageLink(e.target.value)} className="w-full bg-surface border border-white/10 rounded-xl p-3 text-white" />
             <button onClick={handleUpload} className="w-full bg-accent text-black font-black uppercase py-3 rounded-xl hover:bg-accent/90 transition-all">Upload</button>
+          </div>
+        )}
+        {!isLoading && activeTab === 'manage_uploads' && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-black uppercase italic tracking-tighter">Manage Uploads</h3>
+            {uploads.length === 0 ? (
+              <div className="text-center py-12 text-neutral-600 italic text-sm">No uploads found.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {uploads.map((upload) => (
+                  <div key={upload.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4 group hover:border-white/10 transition-all">
+                    <div className="w-16 h-24 bg-neutral-800 rounded-lg overflow-hidden shrink-0">
+                      <img src={upload.imageLink} alt={upload.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
+                    <div className="flex-1 min-width-0">
+                      <h4 className="font-bold text-white truncate">{upload.title}</h4>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-1">{upload.type}</p>
+                      <p className="text-[9px] text-neutral-500 truncate">{upload.driveLink}</p>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteUpload(upload.id)}
+                      className="p-2 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {!isLoading && activeTab === 'announcements' && (

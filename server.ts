@@ -9,7 +9,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import YTMusic from 'ytmusic-api';
-import yt from 'yt-stream';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -85,6 +85,38 @@ app.get('/api/analytics/data', async (req, res) => {
 });
 
 // Music Proxy Routes
+const infamousProxy = createProxyMiddleware({
+  target: 'https://infamous.qzz.io',
+  changeOrigin: true,
+  pathRewrite: { '^/api/music/infamous': '/api' },
+  headers: {
+    'Referer': 'https://infamous.qzz.io/',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+  }
+});
+
+app.use('/api/music/infamous', infamousProxy);
+
+app.get('/api/music/infamous/image', async (req, res) => {
+  try {
+    const url = req.query.url as string;
+    if (!url) return res.status(400).json({ error: 'URL required' });
+    
+    const response = await axios.get(url, {
+      headers: {
+        'Referer': 'https://infamous.qzz.io/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+      },
+      responseType: 'arraybuffer'
+    });
+    res.set('Content-Type', response.headers['content-type']);
+    res.send(Buffer.from(response.data, 'binary'));
+  } catch (error: any) {
+    console.error('Infamous image proxy error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch image' });
+  }
+});
+
 app.get('/api/music/monochrome/search', async (req, res) => {
   try {
     const query = req.query.s as string;
@@ -163,6 +195,76 @@ app.get('/api/music/monochrome/track/:id', async (req, res) => {
   } catch (error) {
     console.error('Track proxy error:', error);
     res.status(500).json({ error: 'Failed to fetch track details' });
+  }
+});
+
+app.get('/api/music/monochrome/stream/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const quality = req.query.quality || 'HIGH';
+    
+    const monochromeTrackMirrors = [
+      `https://ohio.monochrome.tf/track/?id=${id}&quality=${quality}`,
+      `https://virginia.monochrome.tf/track/?id=${id}&quality=${quality}`,
+      `https://frankfurt.monochrome.tf/track/?id=${id}&quality=${quality}`,
+      `https://api.monochrome.tf/track/?id=${id}&quality=${quality}`,
+      `https://api.monochrome.tf/track?id=${id}&quality=${quality}`,
+      `https://api.monochrome.tf/v1/track?id=${id}&quality=${quality}`,
+      `https://monochrome.tf/api/track?id=${id}&quality=${quality}`
+    ];
+
+    for (const url of monochromeTrackMirrors) {
+      try {
+        const response = await axios.get(url, { 
+          headers: MONOCHROME_HEADERS,
+          timeout: 5000,
+          validateStatus: (status) => status === 200
+        });
+        
+        const contentType = response.headers['content-type'] || '';
+        if (contentType.includes('application/json')) {
+          const data = response.data;
+          
+          // Some mirrors might return direct URL
+          if (data?.url) {
+            return res.redirect(data.url);
+          }
+          
+          // Otherwise, check for manifest
+          const manifestData = data?.data || data;
+          if (manifestData?.manifest) {
+            try {
+              const decodedManifest = Buffer.from(manifestData.manifest, 'base64').toString('utf-8');
+              
+              if (manifestData.manifestMimeType === 'application/vnd.tidal.bts') {
+                const parsedManifest = JSON.parse(decodedManifest);
+                if (parsedManifest.urls && parsedManifest.urls.length > 0) {
+                  return res.redirect(parsedManifest.urls[0]);
+                }
+              } else if (manifestData.manifestMimeType === 'application/dash+xml') {
+                // DASH manifest parsing is complex, but we can try to extract the first media URL
+                const match = decodedManifest.match(/<SegmentTemplate[^>]*initialization="([^"]+)"/);
+                if (match && match[1]) {
+                  // This is just the init segment, not the full stream.
+                  // For audio elements, DASH is not natively supported without dash.js.
+                  // We should probably fall back to a lower quality if we get DASH.
+                  console.warn('Received DASH manifest, which is not supported natively by <audio>');
+                }
+              }
+            } catch (err) {
+              console.error('Failed to parse manifest:', err);
+            }
+          }
+        }
+      } catch (e: any) {
+        // ignore
+      }
+    }
+
+    res.status(503).json({ error: 'Failed to fetch stream URL from Monochrome' });
+  } catch (error) {
+    console.error('Stream proxy error:', error);
+    res.status(500).json({ error: 'Failed to fetch stream' });
   }
 });
 

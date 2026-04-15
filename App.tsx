@@ -211,9 +211,9 @@ const App: React.FC = () => {
     const path = window.location.pathname.substring(1).toLowerCase().replace('-', ' ');
     
     if (user) {
-      // If logged in and on root or landing on default 'donate', go to home or music
+      // If logged in and on root or landing on default 'donate', go to home
       if (path === '' || (path === 'donate' && activeCategory === 'donate')) {
-        navigate('music');
+        navigate('home');
       }
     } else {
       // If not logged in and on root, go to donate
@@ -292,7 +292,7 @@ const App: React.FC = () => {
               });
             }
           } catch (err) {
-            console.error("[App] Error checking/creating user document:", err);
+            handleFirestoreError(err, OperationType.GET, 'users');
           }
         }
       } else {
@@ -597,7 +597,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Background glows */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-[5]">
           <div className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full opacity-60" style={{ background: 'var(--accent-glow-dim)', filter: 'blur(160px)', transform: 'translateZ(0)' }}></div>
           <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] rounded-full opacity-30" style={{ background: 'rgba(37,99,235,0.05)', filter: 'blur(130px)', transform: 'translateZ(0)' }}></div>
         </div>
@@ -768,15 +768,13 @@ const App: React.FC = () => {
           <div id="content-area" className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-10 custom-scrollbar overscroll-contain">
             <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
               {/* Hero Section */}
-                  {activeCategory !== 'music' && (
-                    <motion.section 
+                  <motion.section 
                       initial={{ opacity: 0, y: -20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
                       className=""
                     >
                     </motion.section>
-                  )}
                   {searchQuery ? (
                 <motion.div 
                   initial={{ opacity: 0 }}
@@ -817,15 +815,20 @@ const App: React.FC = () => {
                    )}
                 </motion.div>
               ) : (
-                <AnimatePresence mode="wait">
-                  <motion.div 
-                    key={activeCategory}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="w-full pb-24"
-                  >
+                <>
+                  <div className={activeCategory === 'music' ? 'block' : 'hidden'}>
+                    <MusicPlayer />
+                  </div>
+                  <AnimatePresence mode="wait">
+                    {activeCategory !== 'music' && (
+                      <motion.div 
+                        key={activeCategory}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="w-full pb-24"
+                      >
                     {activeCategory === 'support' && (
                       <motion.div 
                         initial={{ opacity: 0, y: 20 }}
@@ -999,7 +1002,6 @@ const App: React.FC = () => {
                         <LibrarySection title={t('Mangas')} items={MANGA_DATA} category="manga" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
                     )}
-                    {activeCategory === 'music' && <MusicPlayer />}
                     
                     {activeCategory === 'proxies' && (
                       <motion.div 
@@ -1027,11 +1029,13 @@ const App: React.FC = () => {
 
                     {activeCategory === 'partners' && <Partners />}
                   </motion.div>
-                </AnimatePresence>
-              )}
-            </div>
-          </div>
-        </main>
+                )}
+              </AnimatePresence>
+            </>
+          )}
+        </div>
+      </div>
+    </main>
       </div>
 
       <AnimatePresence>
@@ -1101,8 +1105,8 @@ const App: React.FC = () => {
                       <X size={24} />
                     </button>
                     <iframe 
-                      src={selectedItem.item.l ? selectedItem.item.l.replace('/view', '/preview') : ''}
-                      className="w-full h-full"
+                      src={selectedItem.item.l || ''}
+                      className="w-full h-full grayscale"
                       allowFullScreen
                     />
                   </div>

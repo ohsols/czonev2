@@ -15,7 +15,7 @@ export const UpdateOverlay = () => {
         setIsUpdating(updating);
       }
     }, (err) => {
-      console.error('Error listening to system status:', err);
+      handleFirestoreError(err, OperationType.GET, 'system/status');
     });
 
     return () => unsubscribe();
