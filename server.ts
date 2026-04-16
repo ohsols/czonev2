@@ -20,6 +20,8 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+app.set('trust proxy', 1);
+
 // In-memory store
 const MAX_HISTORY = 100;
 
@@ -81,12 +83,11 @@ app.get('/api/music/infamous/image', async (req, res) => {
 });
 
 // Mount infamous proxy at root with pathFilter to be explicit
-app.use(createProxyMiddleware({
-  pathFilter: '/api/music/infamous',
+app.use('/api/music/infamous', createProxyMiddleware({
   target: 'https://infamous.qzz.io',
   changeOrigin: true,
   pathRewrite: {
-    '^/api/music/infamous': '/api'
+    '^/api/music/infamous': ''
   },
   on: {
     proxyReq: (proxyReq, req, res) => {
@@ -111,8 +112,23 @@ app.use(createProxyMiddleware({
 
 // YTMusic Search Fallback
 const ytmusic = new YTMusic();
+let isYTMusicInitialized = false;
+
+async function ensureYTMusic() {
+  if (!isYTMusicInitialized) {
+    try {
+      await ytmusic.initialize();
+      isYTMusicInitialized = true;
+      console.log('[Server] YTMusic initialized');
+    } catch (err) {
+      console.error('[Server] YTMusic initialization failed:', err);
+    }
+  }
+}
+
 app.get('/api/music/youtube/search', async (req, res) => {
   try {
+    await ensureYTMusic();
     const query = req.query.q as string;
     if (!query) return res.status(400).json({ error: 'Query required' });
     
@@ -369,7 +385,8 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static('dist'));
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
     
     // SPA fallback - only for non-API routes
     app.get('*', (req, res, next) => {
@@ -377,7 +394,7 @@ async function startServer() {
         console.log(`[Server] API route fell through to SPA fallback: ${req.url}`);
         return next();
       }
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
