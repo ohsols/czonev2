@@ -48,6 +48,7 @@ app.use((req, res, next) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
+  console.log('[Server] Health check requested');
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
@@ -85,39 +86,12 @@ app.get('/api/analytics/data', async (req, res) => {
 });
 
 // Music Proxy Routes
-const infamousProxy = createProxyMiddleware({
-  target: 'https://infamous.qzz.io',
-  changeOrigin: true,
-  pathRewrite: (path, req) => {
-    return path.replace('/api/music/infamous', '/api');
-  },
-  headers: {
-    'Referer': 'https://infamous.qzz.io/',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-  }
-});
-
-// Mount at root so pathRewrite sees the full path, or use the prefix and rewrite from ^/
-app.use('/api/music/infamous', createProxyMiddleware({
-  target: 'https://infamous.qzz.io',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/': '/api/'
-  },
-  on: {
-    proxyReq: (proxyReq, req, res) => {
-      proxyReq.setHeader('Referer', 'https://infamous.qzz.io/');
-      proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
-      proxyReq.setHeader('Origin', 'https://infamous.qzz.io');
-    }
-  }
-}));
-
 app.get('/api/music/infamous/image', async (req, res) => {
   try {
     const url = req.query.url as string;
     if (!url) return res.status(400).json({ error: 'URL required' });
     
+    console.log(`[Server] Proxying image: ${url}`);
     const response = await axios.get(url, {
       headers: {
         'Referer': 'https://infamous.qzz.io/',
@@ -132,6 +106,35 @@ app.get('/api/music/infamous/image', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch image' });
   }
 });
+
+// Mount at root so pathRewrite sees the full path, or use the prefix and rewrite from ^/
+app.use('/api/music/infamous', (req, res, next) => {
+  console.log(`[Server] Infamous proxy request: ${req.method} ${req.url}`);
+  next();
+}, createProxyMiddleware({
+  target: 'https://infamous.qzz.io',
+  changeOrigin: true,
+  pathRewrite: (path, req) => {
+    const rewritten = '/api' + path;
+    console.log(`[Proxy] Rewriting ${path} to ${rewritten}`);
+    return rewritten;
+  },
+  on: {
+    proxyReq: (proxyReq, req, res) => {
+      console.log(`[Proxy] Forwarding ${req.method} ${req.url} to ${proxyReq.protocol}//${proxyReq.host}${proxyReq.path}`);
+      proxyReq.setHeader('Referer', 'https://infamous.qzz.io/');
+      proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
+      proxyReq.setHeader('Origin', 'https://infamous.qzz.io');
+    },
+    proxyRes: (proxyRes, req, res) => {
+      console.log(`[Proxy] Received response ${proxyRes.statusCode} from target for ${req.url}`);
+    },
+    error: (err, req, res) => {
+      console.error('[Proxy Error]', err);
+      res.status(500).json({ error: 'Proxy failed', message: err.message });
+    }
+  }
+}));
 
 app.get('/api/music/monochrome/search', async (req, res) => {
   try {
@@ -315,7 +318,13 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static('dist'));
-    app.get('*all', (req, res) => {
+    
+    // SPA fallback - only for non-API routes
+    app.get('*', (req, res, next) => {
+      if (req.url.startsWith('/api')) {
+        console.log(`[Server] API route fell through to SPA fallback: ${req.url}`);
+        return next();
+      }
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }

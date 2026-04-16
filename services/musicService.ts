@@ -24,15 +24,17 @@ export async function searchMusic(query: string, source: string = 'all'): Promis
         if (item.thumbnail.startsWith('/api/music/cover?u=')) {
           try {
             const b64 = item.thumbnail.split('u=')[1];
-            thumbnailUrl = atob(b64);
+            const realUrl = atob(b64);
+            thumbnailUrl = `/api/music/infamous/image?url=${encodeURIComponent(realUrl)}`;
           } catch (e) {
-            thumbnailUrl = `https://infamous.qzz.io${item.thumbnail}`;
+            thumbnailUrl = `/api/music/infamous/image?url=${encodeURIComponent(`https://infamous.qzz.io${item.thumbnail}`)}`;
           }
         } else {
-          thumbnailUrl = item.thumbnail;
+          thumbnailUrl = `/api/music/infamous/image?url=${encodeURIComponent(item.thumbnail)}`;
         }
       } else if (item.album?.cover) {
-        thumbnailUrl = `https://resources.tidal.com/images/${item.album.cover.replace(/-/g, '/')}/320x320.jpg`;
+        const tidalUrl = `https://resources.tidal.com/images/${item.album.cover.replace(/-/g, '/')}/320x320.jpg`;
+        thumbnailUrl = `/api/music/infamous/image?url=${encodeURIComponent(tidalUrl)}`;
       }
 
       return {
