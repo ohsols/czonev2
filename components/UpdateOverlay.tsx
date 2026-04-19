@@ -9,16 +9,25 @@ export const UpdateOverlay = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(doc(db, 'system', 'status'), (snapshot) => {
-      if (snapshot.exists()) {
-        const updating = snapshot.data().updating === true;
-        setIsUpdating(updating);
+    let timer: NodeJS.Timeout;
+    
+    const checkStatus = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, 'system', 'status'));
+        if (docSnap.exists()) {
+          const updating = docSnap.data().updating === true;
+          setIsUpdating(updating);
+        }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, 'system/status');
       }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, 'system/status');
-    });
+    };
 
-    return () => unsubscribe();
+    checkStatus();
+    // Poll every 30 seconds instead of subscribing
+    timer = setInterval(checkStatus, 30000);
+
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {

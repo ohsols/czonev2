@@ -9,9 +9,19 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import YTMusic from 'ytmusic-api';
+import multer from 'multer';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
+});
+const upload = multer({ storage });
 
 dotenv.config();
 
@@ -264,6 +274,81 @@ app.use('/api/music/stream', async (req, res) => {
     res.status(500).json({ error: 'Internal streaming error' });
   }
 });
+
+app.post('/api/uploads', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const manifestPath = path.join(process.cwd(), 'uploads-manifest.json');
+  let manifest = [];
+  if (fs.existsSync(manifestPath)) {
+    try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')); } catch(e) {}
+  }
+  const fileEntry = {
+    id: req.file.filename,
+    originalName: req.file.originalname,
+    path: `/uploads/${req.file.filename}`,
+    timestamp: Date.now(),
+    title: req.body.title || req.file.originalname,
+    type: req.body.type || 'unknown'
+  };
+  manifest.push(fileEntry);
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  res.json(fileEntry);
+});
+
+app.post('/api/uploads/migrate', (req, res) => {
+  const { legacyUploads } = req.body;
+  if (!Array.isArray(legacyUploads)) return res.status(400).json({ error: 'Invalid data' });
+  
+  const manifestPath = path.join(process.cwd(), 'uploads-manifest.json');
+  let manifest: any[] = [];
+  if (fs.existsSync(manifestPath)) {
+    try { manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')); } catch(e) {}
+  }
+  
+  let addedCount = 0;
+  for (const item of legacyUploads) {
+    if (!manifest.find(m => m.id === item.id)) {
+      manifest.push({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        path: item.driveLink || '',
+        imageLink: item.imageLink || '',
+        timestamp: item.createdAt?.seconds ? item.createdAt.seconds * 1000 : Date.now(),
+        isLegacy: true
+      });
+      addedCount++;
+    }
+  }
+  
+  manifest.sort((a, b) => b.timestamp - a.timestamp);
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  res.json({ success: true, count: addedCount });
+});
+
+app.get('/api/uploads', (req, res) => {
+  const manifestPath = path.join(process.cwd(), 'uploads-manifest.json');
+  if (!fs.existsSync(manifestPath)) return res.json([]);
+  res.json(JSON.parse(fs.readFileSync(manifestPath, 'utf-8')));
+});
+
+app.delete('/api/uploads/:filename', (req, res) => {
+  const filePath = path.join(uploadDir, req.params.filename);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    const manifestPath = path.join(process.cwd(), 'uploads-manifest.json');
+    if (fs.existsSync(manifestPath)) {
+      let manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      manifest = manifest.filter((entry: any) => entry.id !== req.params.filename);
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    }
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
+app.use('/uploads', express.static(uploadDir));
 
 // GA4 Proxy Route
 app.get('/api/analytics/data', async (req, res) => {

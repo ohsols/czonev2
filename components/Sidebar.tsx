@@ -40,6 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, logoUrl, onLogoChange
     { id: 'donate' as Category, label: 'Donate', icon: DollarSign },
     { id: 'support' as Category, label: 'Devs', icon: Heart },
     { id: 'socials' as Category, label: 'Socials', icon: Globe },
+    { id: 'chat' as Category, label: 'Chat', icon: MessageSquare },
     { id: 'games' as Category, label: 'Games', icon: Gamepad2 },
     { id: 'movies' as Category, label: 'Movies', icon: Film },
     { id: 'tv shows' as Category, label: 'TV', icon: Tv },

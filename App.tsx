@@ -18,6 +18,8 @@ import AuthModal from './components/AuthModal';
 import SuggestionModal from './components/SuggestionModal';
 import AppealModal from './components/AppealModal';
 import MusicPlayer from './components/MusicPlayer';
+import { ChatWidget } from './components/ChatWidget';
+import { ChatPage } from './components/ChatPage';
 import { SiteAnnouncements } from './components/SiteAnnouncements';
 import { UpdateOverlay } from './components/UpdateOverlay';
 import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit, ChevronDown, LayoutGrid, Gamepad2, ShieldCheck, LogOut, LogIn, Send, Music } from 'lucide-react';
@@ -224,16 +226,15 @@ const App: React.FC = () => {
   }, [user, isAuthReady]);
 
   useEffect(() => {
-    if (!isAuthReady || isQuotaExceeded) return;
-
-    const q = query(collection(db, 'uploads'), orderBy('createdAt', 'desc'), limit(20));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUploads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'uploads');
-    });
-    return () => unsubscribe();
-  }, [user, isAuthReady]);
+    fetch('/api/uploads')
+      .then(res => res.json())
+      .then(data => {
+        setUploads(data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch uploads", err);
+      });
+  }, []);
 
   useEffect(() => {
     const handleFirestoreErrorEvent = (e: Event) => {
@@ -308,62 +309,70 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!user || !isAuthReady || isQuotaExceeded) return;
 
-    const userDocRef = doc(db, 'users', user.uid);
-    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.customLogo) {
-          setCustomLogo(data.customLogo);
-          localStorage.setItem('chillzone_custom_logo', data.customLogo);
-        }
-        if (data.favorites) {
-          setFavorites(data.favorites);
-          localStorage.setItem('chillzone_favorites', JSON.stringify(data.favorites));
-        }
-        if (data.theme) {
-          localStorage.setItem('custom_theme_id', data.theme);
-          if (data.customThemes) {
-            localStorage.setItem('custom_themes', data.customThemes);
+    let timer: NodeJS.Timeout;
+    const fetchUserDoc = async () => {
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.customLogo) {
+            setCustomLogo(data.customLogo);
+            localStorage.setItem('chillzone_custom_logo', data.customLogo);
           }
-          // Apply theme
-          const savedThemes = localStorage.getItem('custom_themes');
-          const customThemes = savedThemes ? JSON.parse(savedThemes) : { ...defaultThemes };
-          const activeTheme = customThemes[data.theme] || defaultThemes.chillzone;
+          if (data.favorites) {
+            setFavorites(data.favorites);
+            localStorage.setItem('chillzone_favorites', JSON.stringify(data.favorites));
+          }
+          if (data.theme) {
+            localStorage.setItem('custom_theme_id', data.theme);
+            if (data.customThemes) {
+              localStorage.setItem('custom_themes', data.customThemes);
+            }
+            // Apply theme
+            const savedThemes = localStorage.getItem('custom_themes');
+            const customThemes = savedThemes ? JSON.parse(savedThemes) : { ...defaultThemes };
+            const activeTheme = customThemes[data.theme] || defaultThemes.chillzone;
+            
+            const root = document.documentElement;
+            root.style.setProperty('--bg', activeTheme.colors.bg);
+            root.style.setProperty('--text-primary', activeTheme.colors.textPrimary);
+            root.style.setProperty('--surface', activeTheme.colors.surface);
+            root.style.setProperty('--border', activeTheme.colors.border);
+            root.style.setProperty('--accent', activeTheme.colors.accent);
+            root.style.setProperty('--surface-hover', activeTheme.colors.surfaceHover);
+            
+            const hexToRgb = (hex: string) => {
+              const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+              return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 0, 0';
+            };
+            
+            const rgb = hexToRgb(activeTheme.colors.accent);
+            root.style.setProperty('--accent-glow', `rgba(${rgb}, 0.3)`);
+            root.style.setProperty('--accent-glow-dim', `rgba(${rgb}, 0.1)`);
+            root.dataset.theme = data.theme;
+          }
           
-          const root = document.documentElement;
-          root.style.setProperty('--bg', activeTheme.colors.bg);
-          root.style.setProperty('--text-primary', activeTheme.colors.textPrimary);
-          root.style.setProperty('--surface', activeTheme.colors.surface);
-          root.style.setProperty('--border', activeTheme.colors.border);
-          root.style.setProperty('--accent', activeTheme.colors.accent);
-          root.style.setProperty('--surface-hover', activeTheme.colors.surfaceHover);
+          // Update admin status based on role in database and super admin UID
+          const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
+          const defaultAdminEmail = 'darkfn1234567890@gmail.com';
+          const isSuperAdminUser = user.uid === superAdminUid;
+          const isDefaultAdmin = user.email === defaultAdminEmail && user.emailVerified;
+          const isAdminRole = ['admin', 'co-owner', 'owner'].includes(data.role || '');
           
-          const hexToRgb = (hex: string) => {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 0, 0';
-          };
-          
-          const rgb = hexToRgb(activeTheme.colors.accent);
-          root.style.setProperty('--accent-glow', `rgba(${rgb}, 0.3)`);
-          root.style.setProperty('--accent-glow-dim', `rgba(${rgb}, 0.1)`);
-          root.dataset.theme = data.theme;
+          setIsSuperAdmin(isSuperAdminUser);
+          setIsAdmin(isSuperAdminUser || isDefaultAdmin || isAdminRole);
+          setIsBanned(data.banned === true && !isSuperAdminUser);
         }
-        
-        // Update admin status based on role in database and super admin UID
-        const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
-        const defaultAdminEmail = 'darkfn1234567890@gmail.com';
-        const isSuperAdminUser = user.uid === superAdminUid;
-        const isDefaultAdmin = user.email === defaultAdminEmail && user.emailVerified;
-        const isAdminRole = ['admin', 'co-owner', 'owner'].includes(data.role || '');
-        
-        setIsSuperAdmin(isSuperAdminUser);
-        setIsAdmin(isSuperAdminUser || isDefaultAdmin || isAdminRole);
-        setIsBanned(data.banned === true && !isSuperAdminUser);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
       }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
-    });
-    return () => unsubscribe();
+    };
+
+    fetchUserDoc();
+    timer = setInterval(fetchUserDoc, 60000); // 60 seconds polling
+
+    return () => clearInterval(timer);
   }, [user, isAuthReady]);
 
   useEffect(() => {
@@ -512,7 +521,12 @@ const App: React.FC = () => {
     const textFilter = (item: LibraryItem) => item.t.toLowerCase().includes(q);
     
     const uploadFilter = (u: any) => u.title.toLowerCase().includes(q);
-    const mappedUploads = uploads.filter(uploadFilter).map(u => ({ t: u.title, l: u.driveLink, img: u.imageLink, type: u.type }));
+    const mappedUploads = uploads.filter(uploadFilter).map(u => {
+      const isImagePath = u.path && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
+      const isImagePathUrl = u.path && (u.path.startsWith('http') && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
+      const imgSrc = u.imageLink || (isImagePath || isImagePathUrl ? u.path : '/assets/appicon.png');
+      return { t: u.title, l: u.path || u.driveLink, img: imgSrc, type: u.type };
+    });
 
     // Then apply text filter
     const results = {
@@ -1091,7 +1105,12 @@ const App: React.FC = () => {
                     {activeCategory === 'movies' && (
                       <>
                         {uploads.filter(u => u.type === 'movie').length > 0 && (
-                          <LibrarySection title={t('New Movies')} items={uploads.filter(u => u.type === 'movie').map(u => ({ t: u.title, l: u.driveLink, img: u.imageLink }))} category="movie" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection title={t('New Movies')} items={uploads.filter(u => u.type === 'movie').map(u => {
+                            const isImagePath = u.path && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
+                            const isImagePathUrl = u.path && (u.path.startsWith('http') && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
+                            const imgSrc = u.imageLink || (isImagePath || isImagePathUrl ? u.path : '/assets/appicon.png');
+                            return { t: u.title, l: u.path || u.driveLink, img: imgSrc };
+                          })} category="movie" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                         )}
                         <LibrarySection title={t('Movies')} items={MOVIES_DATA} category="movie" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
@@ -1099,7 +1118,12 @@ const App: React.FC = () => {
                     {activeCategory === 'tv shows' && (
                       <>
                         {uploads.filter(u => u.type === 'tv').length > 0 && (
-                          <LibrarySection title={t('New TV Shows')} items={uploads.filter(u => u.type === 'tv').map(u => ({ t: u.title, l: u.driveLink, img: u.imageLink }))} category="tv" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection title={t('New TV Shows')} items={uploads.filter(u => u.type === 'tv').map(u => {
+                            const isImagePath = u.path && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
+                            const isImagePathUrl = u.path && (u.path.startsWith('http') && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
+                            const imgSrc = u.imageLink || (isImagePath || isImagePathUrl ? u.path : '/assets/appicon.png');
+                            return { t: u.title, l: u.path || u.driveLink, img: imgSrc };
+                          })} category="tv" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                         )}
                         <LibrarySection title={t('TV Shows')} items={TV_DATA} category="tv" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
@@ -1107,7 +1131,12 @@ const App: React.FC = () => {
                     {activeCategory === 'anime' && (
                       <>
                         {uploads.filter(u => u.type === 'anime').length > 0 && (
-                          <LibrarySection title={t('New Anime')} items={uploads.filter(u => u.type === 'anime').map(u => ({ t: u.title, l: u.driveLink, img: u.imageLink }))} category="anime" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection title={t('New Anime')} items={uploads.filter(u => u.type === 'anime').map(u => {
+                            const isImagePath = u.path && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
+                            const isImagePathUrl = u.path && (u.path.startsWith('http') && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
+                            const imgSrc = u.imageLink || (isImagePath || isImagePathUrl ? u.path : '/assets/appicon.png');
+                            return { t: u.title, l: u.path || u.driveLink, img: imgSrc };
+                          })} category="anime" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                         )}
                         <LibrarySection title={t('Animes')} items={ANIME_DATA} category="anime" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
@@ -1115,7 +1144,12 @@ const App: React.FC = () => {
                     {activeCategory === 'manga' && (
                       <>
                         {uploads.filter(u => u.type === 'manga').length > 0 && (
-                          <LibrarySection title={t('New Manga')} items={uploads.filter(u => u.type === 'manga').map(u => ({ t: u.title, l: u.driveLink, img: u.imageLink }))} category="manga" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection title={t('New Manga')} items={uploads.filter(u => u.type === 'manga').map(u => {
+                            const isImagePath = u.path && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
+                            const isImagePathUrl = u.path && (u.path.startsWith('http') && u.path.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
+                            const imgSrc = u.imageLink || (isImagePath || isImagePathUrl ? u.path : '/assets/appicon.png');
+                            return { t: u.title, l: u.path || u.driveLink, img: imgSrc };
+                          })} category="manga" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                         )}
                         <LibrarySection title={t('Mangas')} items={MANGA_DATA} category="manga" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
@@ -1152,6 +1186,8 @@ const App: React.FC = () => {
                     )}
 
                     {activeCategory === 'partners' && <Partners />}
+
+                    {activeCategory === 'chat' && <ChatPage />}
 
                     {activeCategory === 'socials' && (
                       <motion.div
@@ -1409,6 +1445,7 @@ const App: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <ChatWidget />
     </div>
   );
 };

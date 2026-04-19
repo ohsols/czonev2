@@ -17,17 +17,24 @@ export const SiteAnnouncements = () => {
   useEffect(() => {
     if (isQuotaExceeded) return;
 
-    const q = query(
-      collection(db, 'site_announcements'), 
-      where('active', '==', true)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAnnouncements(data);
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'site_announcements');
-    });
-    return () => unsubscribe();
+    const fetchAnnouncements = async () => {
+      try {
+        const q = query(
+          collection(db, 'site_announcements'), 
+          where('active', '==', true)
+        );
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAnnouncements(data);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.LIST, 'site_announcements');
+      }
+    };
+
+    fetchAnnouncements();
+    // Poll every 30 seconds
+    const timer = setInterval(fetchAnnouncements, 30000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleDismiss = (id: string) => {

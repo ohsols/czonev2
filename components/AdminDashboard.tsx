@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check, Ban, UserCheck, Upload, Loader2, Database, Settings as SettingsIcon } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -61,33 +61,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const [uploadTitle, setUploadTitle] = useState('');
   const [driveLink, setDriveLink] = useState('');
   const [imageLink, setImageLink] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadSuccess, setUploadSuccess] = useState('');
 
   const handleUpload = async () => {
-    if (!uploadTitle || !driveLink || !imageLink) {
-      setError('Please fill in all fields.');
+    if (!uploadTitle || !fileInputRef.current?.files?.[0]) {
+      setError('Please provide a title and a file.');
       return;
     }
-    if (isQuotaExceeded) {
-      setError('Database quota exceeded. Cannot upload content.');
-      return;
-    }
+    setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'uploads'), {
-        title: uploadTitle,
-        type: uploadType,
-        driveLink,
-        imageLink,
-        createdAt: serverTimestamp(),
+      const formData = new FormData();
+      formData.append('file', fileInputRef.current.files[0]);
+      formData.append('title', uploadTitle);
+      formData.append('type', uploadType);
+      
+      const response = await fetch('/api/uploads', {
+        method: 'POST',
+        body: formData,
       });
+      if (!response.ok) throw new Error('Upload failed');
+      
       setUploadSuccess('Content uploaded successfully!');
       setUploadTitle('');
-      setDriveLink('');
-      setImageLink('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setTimeout(() => setUploadSuccess(''), 3000);
     } catch (err) {
       setError('Failed to upload content.');
-      handleFirestoreError(err, OperationType.CREATE, 'uploads');
+    } finally {
+      setIsSubmitting(false);
     }
   };
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -222,92 +224,97 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
     if (activeTab === 'analytics' || activeTab === 'upload' || isQuotaExceeded) return;
 
     setIsLoading(true);
-    let unsubscribe: () => void = () => {};
 
     try {
       if (activeTab === 'manage_uploads') {
-        const q = query(collection(db, 'uploads'), orderBy('createdAt', 'desc'), limit(100));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          setUploads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-          setIsLoading(false);
-        }, (err) => {
-          handleFirestoreError(err, OperationType.LIST, 'uploads');
-          setIsLoading(false);
-        });
+        fetch('/api/uploads')
+          .then(res => res.json())
+          .then(data => {
+            setUploads(data);
+            setIsLoading(false);
+          })
+          .catch(err => {
+            setError('Failed to fetch uploads.');
+            setIsLoading(false);
+          });
       } else if (activeTab === 'announcements') {
-        const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(50));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          console.log(`[AdminDashboard] Announcements snapshot received: ${snapshot.size} docs`);
-          setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Announcement[]);
-          setIsLoading(false);
-        }, (err) => {
-          handleFirestoreError(err, OperationType.LIST, 'site_announcements');
-          setIsLoading(false);
-        });
+        const fetchAnnouncements = async () => {
+          try {
+            const q = query(collection(db, 'site_announcements'), orderBy('createdAt', 'desc'), limit(50));
+            const snapshot = await getDocs(q);
+            setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Announcement[]);
+            setIsLoading(false);
+          } catch(err) {
+            handleFirestoreError(err, OperationType.LIST, 'site_announcements');
+            setIsLoading(false);
+          }
+        };
+        fetchAnnouncements();
       } else if (activeTab === 'suggestions') {
-        const q = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(100));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          console.log(`[AdminDashboard] Suggestions snapshot received: ${snapshot.size} docs`);
-          setSuggestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Suggestion[]);
-          setIsLoading(false);
-        }, (err) => {
-          handleFirestoreError(err, OperationType.LIST, 'suggestions');
-          setIsLoading(false);
-        });
+        const fetchSuggestions = async () => {
+          try {
+            const q = query(collection(db, 'suggestions'), orderBy('createdAt', 'desc'), limit(100));
+            const snapshot = await getDocs(q);
+            setSuggestions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Suggestion[]);
+            setIsLoading(false);
+          } catch(err) {
+            handleFirestoreError(err, OperationType.LIST, 'suggestions');
+            setIsLoading(false);
+          }
+        };
+        fetchSuggestions();
       } else if (activeTab === 'admins') {
-        const q = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(100));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          console.log(`[AdminDashboard] AllowedAdmins snapshot received: ${snapshot.size} docs`);
-          setAllowedAdmins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AllowedAdmin[]);
-          setIsLoading(false);
-        }, (err) => {
-          handleFirestoreError(err, OperationType.LIST, 'allowed_admins');
-          setIsLoading(false);
-        });
+        const fetchAdmins = async () => {
+          try {
+            const q = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(100));
+            const snapshot = await getDocs(q);
+            setAllowedAdmins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AllowedAdmin[]);
+            setIsLoading(false);
+          } catch(err) {
+            handleFirestoreError(err, OperationType.LIST, 'allowed_admins');
+            setIsLoading(false);
+          }
+        };
+        fetchAdmins();
       } else if (activeTab === 'users' || activeTab === 'banned') {
-        // Increased limit from 100 to 3000 as requested.
-        const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          console.log(`[AdminDashboard] Users snapshot received: ${snapshot.size} docs`);
-          const fetchedUsers = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return { 
-              uid: doc.id, 
-              role: 'user', // Default role
-              ...data 
-            };
-          }) as User[];
-          
-          if (fetchedUsers.length > 0) {
-            console.log(`[AdminDashboard] Sample fetched user:`, fetchedUsers[0].email || fetchedUsers[0].uid);
+        const fetchUsers = async () => {
+          try {
+            const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100));
+            const snapshot = await getDocs(q);
+            const fetchedUsers = snapshot.docs.map(doc => ({ uid: doc.id, role: 'user', ...doc.data() })) as User[];
+            setUsers(fetchedUsers);
+            setIsLoading(false);
+          } catch(err) {
+            handleFirestoreError(err, OperationType.LIST, 'users');
+            setIsLoading(false);
           }
-          
-          setUsers(fetchedUsers);
-          setIsLoading(false);
-        }, (err) => {
-          handleFirestoreError(err, OperationType.LIST, 'users');
-          setIsLoading(false);
-        });
+        };
+        fetchUsers();
       } else if (activeTab === 'appeals') {
-        const q = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(50));
-        unsubscribe = onSnapshot(q, (snapshot) => {
-          console.log(`[AdminDashboard] Appeals snapshot received: ${snapshot.size} docs`);
-          setAppeals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appeal[]);
-          setIsLoading(false);
-        }, (err) => {
-          handleFirestoreError(err, OperationType.LIST, 'appeals');
-          setIsLoading(false);
-        });
-      } else if (activeTab === 'system') {
-        unsubscribe = onSnapshot(doc(db, 'system', 'status'), (snapshot) => {
-          if (snapshot.exists()) {
-            setIsUpdating(snapshot.data().updating === true);
+        const fetchAppeals = async () => {
+          try {
+            const q = query(collection(db, 'appeals'), orderBy('createdAt', 'desc'), limit(50));
+            const snapshot = await getDocs(q);
+            setAppeals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Appeal[]);
+            setIsLoading(false);
+          } catch(err) {
+            handleFirestoreError(err, OperationType.LIST, 'appeals');
+            setIsLoading(false);
           }
-          setIsLoading(false);
-        }, (err) => {
-          handleFirestoreError(err, OperationType.GET, 'system/status');
-          setIsLoading(false);
-        });
+        };
+        fetchAppeals();
+      } else if (activeTab === 'system') {
+        const fetchSystem = async () => {
+          try {
+            const snapshot = await getDoc(doc(db, 'system', 'status'));
+            if (snapshot.exists()) setIsUpdating(snapshot.data().updating === true);
+            setIsLoading(false);
+          } catch(err) {
+            handleFirestoreError(err, OperationType.GET, 'system/status');
+            setIsLoading(false);
+          }
+        };
+        fetchSystem();
       }
     } catch (err) {
       if (!String(err).includes('Quota limit exceeded') && !String(err).includes('Quota exceeded')) {
@@ -315,8 +322,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       }
       setIsLoading(false);
     }
-
-    return () => unsubscribe();
   }, [activeTab]);
 
   const handleAddAnnouncement = async (e: React.FormEvent) => {
@@ -362,15 +367,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   };
 
   const handleDeleteUpload = async (id: string) => {
-    if (isQuotaExceeded) return;
     if (!window.confirm('Are you sure you want to delete this upload?')) return;
     try {
-      await deleteDoc(doc(db, 'uploads', id));
+      const response = await fetch(`/api/uploads/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete');
+      setUploads(uploads.filter(u => u.id !== id));
       setSuccess('Upload deleted successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to delete upload.');
-      handleFirestoreError(err, OperationType.DELETE, `uploads/${id}`);
     }
   };
 
@@ -382,6 +387,44 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `site_announcements/${id}`);
+    }
+  };
+
+  const handleMigrateUploads = async () => {
+    if (!window.confirm('This will pull your legacy Firebase uploads into the new local system. Proceed?')) return;
+    setIsSubmitting(true);
+    try {
+      const dbq = query(collection(db, 'uploads'), limit(1000));
+      const snap = await getDocs(dbq);
+      const legacyUploads = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      if (legacyUploads.length === 0) {
+        setSuccess('No legacy uploads found in Firebase.');
+        setTimeout(() => setSuccess(null), 3000);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const res = await fetch('/api/uploads/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ legacyUploads })
+      });
+      
+      if (!res.ok) throw new Error('Migration failed');
+      const jsonRes = await res.json();
+      
+      const listRes = await fetch('/api/uploads');
+      const newData = await listRes.json();
+      setUploads(newData);
+      
+      setSuccess(`Successfully migrated ${jsonRes.count} uploads!`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to migrate uploads.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -673,36 +716,54 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
               <option value="tv">TV Show</option>
             </select>
             <input type="text" placeholder="Title" value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} className="w-full bg-surface border border-white/10 rounded-xl p-3 text-white" />
-            <input type="text" placeholder="Google Drive Link" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} className="w-full bg-surface border border-white/10 rounded-xl p-3 text-white" />
+            <input type="file" ref={fileInputRef} className="w-full bg-surface border border-white/10 rounded-xl p-3 text-white" />
             <input type="text" placeholder="Image Link" value={imageLink} onChange={(e) => setImageLink(e.target.value)} className="w-full bg-surface border border-white/10 rounded-xl p-3 text-white" />
-            <button onClick={handleUpload} className="w-full bg-accent text-black font-black uppercase py-3 rounded-xl hover:bg-accent/90 transition-all">Upload</button>
+            <button onClick={handleUpload} disabled={isSubmitting} className="w-full bg-accent text-black font-black uppercase py-3 rounded-xl hover:bg-accent/90 transition-all">
+                {isSubmitting ? 'Uploading...' : 'Upload'}
+            </button>
           </div>
         )}
         {!isLoading && activeTab === 'manage_uploads' && (
           <div className="space-y-4">
-            <h3 className="text-xl font-black uppercase italic tracking-tighter">Manage Uploads</h3>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-xl font-black uppercase italic tracking-tighter">Manage Uploads</h3>
+              <button 
+                onClick={handleMigrateUploads} 
+                disabled={isSubmitting}
+                className="bg-white/5 text-xs px-3 py-2 flex items-center gap-2 border border-white/20 rounded-lg hover:bg-white/10 transition-all font-bold"
+              >
+                <Database size={14} className="text-accent" /> Migrate Legacy Firebase Uploads
+              </button>
+            </div>
             {uploads.length === 0 ? (
               <div className="text-center py-12 text-neutral-600 italic text-sm">No uploads found.</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {uploads.map((upload) => (
-                  <div key={upload.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4 group hover:border-white/10 transition-all">
-                    <div className="w-16 h-24 bg-neutral-800 rounded-lg overflow-hidden shrink-0">
-                      <img src={upload.imageLink} alt={upload.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                {uploads.map((upload) => {
+                  const isImagePath = upload.path && upload.path.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i);
+                  const isImagePathUrl = upload.path && (upload.path.startsWith('http') && upload.path.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
+                  const imgSrc = upload.imageLink || (isImagePath || isImagePathUrl ? upload.path : '/assets/appicon.png');
+                  return (
+                  <div key={upload.id} className="relative bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4 group hover:border-white/10 transition-all overflow-hidden">
+                    {upload.isLegacy && <div className="absolute top-0 right-0 bg-yellow-500/20 text-yellow-500 text-[8px] font-bold px-2 py-0.5 rounded-bl-lg uppercase z-10">Legacy</div>}
+                    <div className="w-16 h-24 bg-neutral-800 rounded-lg overflow-hidden shrink-0 flex items-center justify-center relative">
+                      <img src={imgSrc} alt={upload.title} className="absolute inset-0 w-full h-full object-cover" referrerPolicy="no-referrer" 
+                           onError={(e) => { (e.target as HTMLImageElement).src = '/assets/appicon.png'; }} />
                     </div>
                     <div className="flex-1 min-width-0">
                       <h4 className="font-bold text-white truncate">{upload.title}</h4>
                       <p className="text-[10px] font-black uppercase tracking-widest text-accent mb-1">{upload.type}</p>
-                      <p className="text-[9px] text-neutral-500 truncate">{upload.driveLink}</p>
+                      <p className="text-[9px] text-neutral-500 truncate" title={upload.path}>{upload.path}</p>
                     </div>
                     <button 
                       onClick={() => handleDeleteUpload(upload.id)}
-                      className="p-2 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20"
+                      className="p-2 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20 z-10"
                     >
                       <Trash2 size={16} />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
