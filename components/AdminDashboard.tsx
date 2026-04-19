@@ -279,7 +279,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
       } else if (activeTab === 'users' || activeTab === 'banned') {
         const fetchUsers = async () => {
           try {
-            const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(100));
+            const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(2000));
             const snapshot = await getDocs(q);
             const fetchedUsers = snapshot.docs.map(doc => ({ uid: doc.id, role: 'user', ...doc.data() })) as User[];
             setUsers(fetchedUsers);

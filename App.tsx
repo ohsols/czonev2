@@ -1385,6 +1385,12 @@ const App: React.FC = () => {
       </AnimatePresence>
 
       <AnimatePresence>
+        {isSuggestionModalOpen && (
+          <SuggestionModal onClose={() => setIsSuggestionModalOpen(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {isAdminOpen && (
           <motion.div
             initial={{ opacity: 0 }}
