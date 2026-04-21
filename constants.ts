@@ -871,6 +871,16 @@ export const PROXIES_DATA: ProxyItem[] = [
 ];
 
 export const PARTNERS_DATA: PartnerItem[] = [
+  {
+    name: "Bloxcraft Studios",
+    owner: "THARUN9772",
+    url: "https://bloxcraft-ubg.pages.dev",
+    urls: [
+      { name: "Website", url: "https://bloxcraft-ubg.pages.dev" }
+    ],
+    discord: "https://discord.gg/sqPFYEsz8F",
+    avatar: "https://cdn.discordapp.com/attachments/1495941454869172314/1496238059329552446/bloxcraft_transparent.png?ex=69e927c8&is=69e7d648&hm=81a190fe39d77a128281ba1f9ea1061a7e1de55c1cf693fed698a9c045d81854&"
+  },
   { 
     name: "カービィアーケード", 
     owner: "SAM", 

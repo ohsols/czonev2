@@ -4,6 +4,7 @@ import { Home, Film, Tv, Sparkles, BookOpen, Heart, Camera, Globe, Users, Dollar
 import { Category } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../context/LanguageContext';
+import { ChillZoneLogo } from './ChillZoneLogo';
 
 interface SidebarProps {
   activeCategory: Category;
@@ -39,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, logoUrl, onLogoChange
     { id: 'home' as Category, label: 'Home', icon: Home },
     { id: 'donate' as Category, label: 'Donate', icon: DollarSign },
     { id: 'partners' as Category, label: 'Partners', icon: Users },
-    { id: 'support' as Category, label: 'Devs', icon: Code },
+    { id: 'support' as Category, label: 'Creators', icon: Code },
     { id: 'socials' as Category, label: 'Socials', icon: Globe },
     { id: 'games' as Category, label: 'Games', icon: Gamepad2 },
     { id: 'movies' as Category, label: 'Movies', icon: Film },
@@ -72,13 +73,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, logoUrl, onLogoChange
           className="relative group/logo cursor-pointer" 
           onClick={handleLogoClick}
         >
-          <div className="w-12 h-12 shrink-0 overflow-hidden relative z-10 shadow-[0_0_20px_rgba(255,255,255,0.05)] rounded-xl">
-            <img 
-              src={logoUrl || 'https://picsum.photos/seed/logo/200/200'} 
-              alt="Logo" 
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
+          <div className="w-16 h-16 shrink-0 overflow-hidden relative z-10 shadow-[0_0_20px_rgba(255,255,255,0.05)] rounded-xl flex items-center justify-center">
+            {logoUrl && !logoUrl.includes('googleusercontent.com') && logoUrl !== '/logo.svg' ? (
+              <img 
+                src={logoUrl} 
+                alt="Logo" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <ChillZoneLogo size={60} />
+            )}
           </div>
           <input 
             type="file" 

@@ -19,9 +19,10 @@ import SuggestionModal from './components/SuggestionModal';
 import MusicPlayer from './components/MusicPlayer';
 import { SiteAnnouncements } from './components/SiteAnnouncements';
 import { UpdateOverlay } from './components/UpdateOverlay';
+import { ChillZoneLogo } from './components/ChillZoneLogo';
 import { Search, X, Film, Sparkles, BookOpen, Tv, SearchX, PlayCircle, Star, Globe, Users, ExternalLink, ShieldAlert, Zap, Activity, Loader2, Book, AlertTriangle, Settings as SettingsIcon, GitCommit, ChevronDown, LayoutGrid, Gamepad2, ShieldCheck, LogOut, LogIn, Send, Music, MessageSquare } from 'lucide-react';
 
-const DEFAULT_LOGO = "https://lh7-rt.googleusercontent.com/sitesz/AClOY7psM7n5cC2oRAQVLVss3LsgYFKWwE-KzTjGQvDYtnnp1f1j-Szl1OH6r1pZTXpsw0t_1es0N4P9E2cBl4Oqs-lOwNJdAt3H5CiGxGZKfBTzaYq_ybiI1qd2dWXWu_GRWMqLDD_3BL9tkNhJBNJhjBuuQWyvP1B19h6v0fblyHBwfxs-94c7?key=IannGxLsV9P5UfJ0NHPqqQ";
+const DEFAULT_LOGO = "/logo.svg";
 
 const DiscordIcon = ({ size = 20, className = "" }: { size?: number, className?: string }) => (
   <svg 
@@ -255,8 +256,9 @@ const App: React.FC = () => {
       setUser(currentUser);
       const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
       const defaultAdminEmail = 'darkfn1234567890@gmail.com';
+      const otherAdminEmail = 'calabcoleman2187@gmail.com';
       const isSuperAdminUser = currentUser?.uid === superAdminUid;
-      const isDefaultAdmin = currentUser?.email === defaultAdminEmail && currentUser?.emailVerified;
+      const isDefaultAdmin = (currentUser?.email === defaultAdminEmail || currentUser?.email === otherAdminEmail) && currentUser?.emailVerified;
       
       setIsSuperAdmin(isSuperAdminUser);
       if (isSuperAdminUser || isDefaultAdmin) setIsAdmin(true);
@@ -341,8 +343,9 @@ const App: React.FC = () => {
         // Update admin status based on role in database and super admin UID
         const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
         const defaultAdminEmail = 'darkfn1234567890@gmail.com';
+        const otherAdminEmail = 'calabcoleman2187@gmail.com';
         const isSuperAdminUser = user.uid === superAdminUid;
-        const isDefaultAdmin = user.email === defaultAdminEmail && user.emailVerified;
+        const isDefaultAdmin = (user.email === defaultAdminEmail || user.email === otherAdminEmail) && user.emailVerified;
         const isAdminRole = ['admin', 'co-owner', 'owner'].includes(data.role || '');
         
         setIsSuperAdmin(isSuperAdminUser);
@@ -445,7 +448,7 @@ const App: React.FC = () => {
       const { detail } = event;
       if (detail.error.includes('Quota limit exceeded') || detail.error.includes('Quota exceeded')) {
         setIsQuotaExceededUI(true);
-        if (!hasShownQuotaPopup) {
+        if (!hasShownQuotaPopup && (isAdmin || isSuperAdmin)) {
           setShowQuotaPopup(true);
         }
       }
@@ -954,9 +957,17 @@ const App: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="py-12 space-y-16"
                       >
-                        <div className="text-center">
+                        <div className="flex flex-col items-center text-center">
+                          <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ duration: 1, type: "spring" }}
+                            className="mb-8"
+                          >
+                            <ChillZoneLogo size={240} />
+                          </motion.div>
                           <h1 className="text-5xl md:text-7xl font-black uppercase italic tracking-tighter text-white mb-4">
-                            {t('Devs')}
+                            {t('Creators')}
                           </h1>
                           <p className="text-text-muted text-lg font-medium max-w-2xl mx-auto">
                             {t('The team behind ChillZone.')} <span className="text-accent font-bold">{t('Click on our cards')}</span> {t('to visit our personal sites and socials!')}
@@ -1440,11 +1451,10 @@ const App: React.FC = () => {
                 onClick={() => {
                   setHasShownQuotaPopup(true);
                   setShowQuotaPopup(false);
-                  setIsAdminOpen(true);
                 }}
                 className="w-full py-4 bg-white text-black rounded-xl font-black uppercase tracking-widest hover:scale-[1.02] transition-all"
               >
-                Dismiss & Open Panel
+                Dismiss
               </button>
             </motion.div>
           </motion.div>

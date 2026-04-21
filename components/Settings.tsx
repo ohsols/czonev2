@@ -521,15 +521,21 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
     localStorage.setItem('custom_theme_id', currentThemeId);
     localStorage.setItem('custom_themes', JSON.stringify(customThemes));
     
-    // Sync to Firebase if logged in
+    // Sync to Firebase if logged in - Debounced to prevent quota issues
+    let timeoutId: NodeJS.Timeout;
     if (auth.currentUser && !isQuotaExceeded) {
-      updateDoc(doc(db, 'users', auth.currentUser.uid), {
-        theme: currentThemeId,
-        customThemes: JSON.stringify(customThemes)
-      }).catch(err => {
-        handleFirestoreError(err, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
-      });
+      timeoutId = setTimeout(() => {
+        updateDoc(doc(db, 'users', auth.currentUser!.uid), {
+          theme: currentThemeId,
+          customThemes: JSON.stringify(customThemes)
+        }).catch(err => {
+          handleFirestoreError(err, OperationType.UPDATE, `users/${auth.currentUser?.uid}`);
+        });
+      }, 2000); // 2 second debounce
     }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [activeTheme, currentThemeId, customThemes]);
 
   const handleColorChange = (key: keyof ThemeColors, color: string) => {

@@ -70,7 +70,8 @@ service cloud.firestore {
 
     function isAdmin() {
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      let isDefaultAdmin = isAuthenticated() && request.auth.token.get('email', '') == 'darkfn1234567890@gmail.com' && request.auth.token.get('email_verified', false) == true;
+      let admins = ['darkfn1234567890@gmail.com', 'calabcoleman2187@gmail.com'];
+      let isDefaultAdmin = isAuthenticated() && request.auth.token.get('email', '') in admins && request.auth.token.get('email_verified', false) == true;
       return isAppOwner() || isDefaultAdmin || (isAuthenticated() && exists(path) && get(path).data.get('role', '') in ['admin', 'co-owner', 'owner']);
     }
 
