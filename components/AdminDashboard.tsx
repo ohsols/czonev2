@@ -113,7 +113,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
     // Local DB - Uploads
     if (activeTab === 'manage_uploads' && !hasFetchedLocal.current.manage_uploads) {
       setIsLoading(true);
-      fetch('/api/db/uploads')
+      fetch(`/api/db/uploads?t=${Date.now()}`, { cache: 'no-store' })
         .then(res => res.json())
         .then(data => {
             setUploads(data);
@@ -129,7 +129,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
     // Local DB - Announcements
     if (activeTab === 'announcements' && !hasFetchedLocal.current.announcements) {
       setIsLoading(true);
-      fetch('/api/db/announcements')
+      fetch(`/api/db/announcements?t=${Date.now()}`, { cache: 'no-store' })
         .then(res => res.json())
         .then(data => {
             setAnnouncements(data);
@@ -145,7 +145,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
     // Local DB - Suggestions
     if (activeTab === 'suggestions' && !hasFetchedLocal.current.suggestions) {
       setIsLoading(true);
-      fetch('/api/db/suggestions')
+      fetch(`/api/db/suggestions?t=${Date.now()}`, { cache: 'no-store' })
         .then(res => res.json())
         .then(data => {
             setSuggestions(data);

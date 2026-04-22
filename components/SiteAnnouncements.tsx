@@ -17,7 +17,7 @@ export const SiteAnnouncements = () => {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await fetch('/api/db/announcements');
+        const res = await fetch(`/api/db/announcements?t=${Date.now()}`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           setAnnouncements(data.filter((a: any) => a.active !== false));

@@ -66,34 +66,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeCategory, logoUrl, onLogoChange
       onMouseLeave={() => setIsHovered(false)}
       className="bg-bg border-b border-white/5 flex flex-row items-center px-8 shrink-0 transition-all duration-300 z-[100] w-full relative"
     >
-      <div className="mr-12">
-        <motion.div 
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          className="relative group/logo cursor-pointer" 
-          onClick={handleLogoClick}
-        >
-          <div className="w-16 h-16 shrink-0 overflow-hidden relative z-10 shadow-[0_0_20px_rgba(255,255,255,0.05)] rounded-xl flex items-center justify-center">
-            {logoUrl && !logoUrl.includes('googleusercontent.com') && logoUrl !== '/logo.svg' ? (
-              <img 
-                src={logoUrl} 
-                alt="Logo" 
-                className="w-full h-full object-contain"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <ChillZoneLogo size={60} />
-            )}
-          </div>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            accept="image/*" 
-            onChange={handleFileChange}
-          />
-        </motion.div>
-      </div>
       
       <div className="flex-1 h-full flex flex-row items-center gap-8 overflow-x-auto custom-scrollbar no-scrollbar">
         {/* Data/Navigation Section */}

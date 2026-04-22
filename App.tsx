@@ -150,6 +150,7 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [proxySearch, setProxySearch] = useState('');
   const [customLogo, setCustomLogo] = useState<string>(DEFAULT_LOGO);
+  const [isIntroDone, setIsIntroDone] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -224,7 +225,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchUploads = async () => {
       try {
-        const response = await fetch('/api/db/uploads');
+        const response = await fetch(`/api/db/uploads?t=${Date.now()}`, { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           // Sort locally if not sorted by server
@@ -235,9 +236,15 @@ const App: React.FC = () => {
       }
     };
     fetchUploads();
+    
+    // Auto-fetch if admin modal is closed so UI captures edits
+    if (!isAdminOpen) {
+      fetchUploads();
+    }
+
     const uploadTimer = setInterval(fetchUploads, 60000); // Poll uploads every minute
     return () => clearInterval(uploadTimer);
-  }, []);
+  }, [isAdminOpen]);
 
   useEffect(() => {
     // Legacy quota handling removed as we moved to local server storage
@@ -525,10 +532,10 @@ const App: React.FC = () => {
 
     // Then apply text filter
     const results = {
-      movies: [...MOVIES_DATA.filter(textFilter), ...mappedUploads.filter(u => u.type === 'movie')],
-      anime: [...ANIME_DATA.filter(textFilter), ...mappedUploads.filter(u => u.type === 'anime')],
-      manga: [...MANGA_DATA.filter(textFilter), ...mappedUploads.filter(u => u.type === 'manga')],
-      tv: [...TV_DATA.filter(textFilter), ...mappedUploads.filter(u => u.type === 'tv')],
+      movies: [...mappedUploads.filter(u => u.type === 'movie'), ...MOVIES_DATA.filter(textFilter)],
+      anime: [...mappedUploads.filter(u => u.type === 'anime'), ...ANIME_DATA.filter(textFilter)],
+      manga: [...mappedUploads.filter(u => u.type === 'manga'), ...MANGA_DATA.filter(textFilter)],
+      tv: [...mappedUploads.filter(u => u.type === 'tv'), ...TV_DATA.filter(textFilter)],
     };
 
     if (searchCategory !== 'all') {
@@ -553,6 +560,35 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
+      <AnimatePresence>
+        {!isIntroDone && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="fixed inset-0 z-[9999] bg-bg flex items-center justify-center flex-col"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1, type: "spring" }}
+            >
+              <ChillZoneLogo size={240} />
+            </motion.div>
+            
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.8 }}
+              onClick={() => setIsIntroDone(true)}
+              className="mt-12 px-10 py-3 bg-white/5 hover:bg-accent border border-white/10 hover:border-accent/50 text-white font-black rounded-full transition-all duration-300 uppercase tracking-widest shadow-lg hover:shadow-accent/20"
+            >
+              Enter
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <UpdateOverlay />
       <ScrambleEffect />
       <SiteAnnouncements />
@@ -904,6 +940,25 @@ const App: React.FC = () => {
                           ))}
                         </div>
 
+                        {/* Recently Added Content */}
+                        {uploads.length > 0 && (
+                          <div className="mt-8">
+                            <LibrarySection 
+                                title={t('Fresh Drops')} 
+                                items={uploads.slice(0, 10).map((u: any) => ({ 
+                                    t: u.title, 
+                                    l: u.driveLink || u.path || u.imageLink, 
+                                    img: u.imageLink || 'https://picsum.photos/seed/placeholder/200/300',
+                                    type: u.type
+                                }))} 
+                                category="all" 
+                                searchQuery="" 
+                                onOpenDetails={handleOpenDetails} 
+                                showSearch={false} 
+                            />
+                          </div>
+                        )}
+
                         {/* Featured Staff Section */}
                         <div className="bg-bg rounded-[50px] p-12 border border-surface-hover">
                            <div className="flex flex-col md:flex-row items-center justify-between mb-16 gap-8">
@@ -1101,11 +1156,18 @@ const App: React.FC = () => {
                     {activeCategory === 'movies' && (
                       <>
                         {uploads.filter(u => u.type === 'movie').length > 0 && (
-                          <LibrarySection title={t('New Movies')} items={uploads.filter(u => u.type === 'movie').map(u => {
-                            const imgSrc = u.imageLink || 'https://picsum.photos/seed/placeholder/200/300';
-                            const contentLink = u.driveLink || u.path || u.imageLink;
-                            return { t: u.title, l: contentLink, img: imgSrc };
-                          })} category="movie" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection 
+                            title={t('New Movies')} 
+                            items={uploads.filter(u => u.type === 'movie').map(u => ({
+                                t: u.title,
+                                l: u.driveLink || u.path || u.imageLink,
+                                img: u.imageLink || 'https://picsum.photos/seed/placeholder/200/300'
+                            }))} 
+                            category="movie" 
+                            searchQuery="" 
+                            onOpenDetails={handleOpenDetails} 
+                            showSearch={true} 
+                          />
                         )}
                         <LibrarySection title={t('Movies')} items={MOVIES_DATA} category="movie" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
@@ -1113,11 +1175,18 @@ const App: React.FC = () => {
                     {activeCategory === 'tv shows' && (
                       <>
                         {uploads.filter(u => u.type === 'tv').length > 0 && (
-                          <LibrarySection title={t('New TV Shows')} items={uploads.filter(u => u.type === 'tv').map(u => {
-                            const imgSrc = u.imageLink || 'https://picsum.photos/seed/placeholder/200/300';
-                            const contentLink = u.driveLink || u.path || u.imageLink;
-                            return { t: u.title, l: contentLink, img: imgSrc };
-                          })} category="tv" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection 
+                            title={t('New TV Shows')} 
+                            items={uploads.filter(u => u.type === 'tv').map(u => ({
+                                t: u.title,
+                                l: u.driveLink || u.path || u.imageLink,
+                                img: u.imageLink || 'https://picsum.photos/seed/placeholder/200/300'
+                            }))} 
+                            category="tv" 
+                            searchQuery="" 
+                            onOpenDetails={handleOpenDetails} 
+                            showSearch={true} 
+                          />
                         )}
                         <LibrarySection title={t('TV Shows')} items={TV_DATA} category="tv" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
@@ -1125,11 +1194,18 @@ const App: React.FC = () => {
                     {activeCategory === 'anime' && (
                       <>
                         {uploads.filter(u => u.type === 'anime').length > 0 && (
-                          <LibrarySection title={t('New Anime')} items={uploads.filter(u => u.type === 'anime').map(u => {
-                            const imgSrc = u.imageLink || 'https://picsum.photos/seed/placeholder/200/300';
-                            const contentLink = u.driveLink || u.path || u.imageLink;
-                            return { t: u.title, l: contentLink, img: imgSrc };
-                          })} category="anime" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection 
+                            title={t('New Anime')} 
+                            items={uploads.filter(u => u.type === 'anime').map(u => ({
+                                t: u.title,
+                                l: u.driveLink || u.path || u.imageLink,
+                                img: u.imageLink || 'https://picsum.photos/seed/placeholder/200/300'
+                            }))} 
+                            category="anime" 
+                            searchQuery="" 
+                            onOpenDetails={handleOpenDetails} 
+                            showSearch={true} 
+                          />
                         )}
                         <LibrarySection title={t('Animes')} items={ANIME_DATA} category="anime" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
@@ -1137,11 +1213,18 @@ const App: React.FC = () => {
                     {activeCategory === 'manga' && (
                       <>
                         {uploads.filter(u => u.type === 'manga').length > 0 && (
-                          <LibrarySection title={t('New Manga')} items={uploads.filter(u => u.type === 'manga').map(u => {
-                            const imgSrc = u.imageLink || 'https://picsum.photos/seed/placeholder/200/300';
-                            const contentLink = u.driveLink || u.path || u.imageLink;
-                            return { t: u.title, l: contentLink, img: imgSrc };
-                          })} category="manga" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
+                          <LibrarySection 
+                            title={t('New Manga')} 
+                            items={uploads.filter(u => u.type === 'manga').map(u => ({
+                                t: u.title,
+                                l: u.driveLink || u.path || u.imageLink,
+                                img: u.imageLink || 'https://picsum.photos/seed/placeholder/200/300'
+                            }))} 
+                            category="manga" 
+                            searchQuery="" 
+                            onOpenDetails={handleOpenDetails} 
+                            showSearch={true} 
+                          />
                         )}
                         <LibrarySection title={t('Mangas')} items={MANGA_DATA} category="manga" searchQuery="" onOpenDetails={handleOpenDetails} showSearch={true} />
                       </>
