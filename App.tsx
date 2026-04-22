@@ -10,9 +10,9 @@ import { GamesHub } from './components/GamesHub';
 import { Category, LibraryItem, StaffMember, Game, FavoriteItem } from './types';
 import { MOVIES_DATA, ANIME_DATA, MANGA_DATA, TV_DATA, STAFF_DATA, PARTNERS_DATA, PROXIES_DATA } from './constants';
 import { useLanguage } from './context/LanguageContext';
-import { auth, logout, db, handleFirestoreError, OperationType, isQuotaExceeded } from './firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, updateDoc, onSnapshot, collection, query, orderBy, limit, where, getDocs, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+// import { auth } from './firebase'; // Removed
+// import { onAuthStateChanged, User } from 'firebase/auth'; // Removed
+
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import SuggestionModal from './components/SuggestionModal';
@@ -198,7 +198,7 @@ const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
   const [hasOpenedUpdateLog, setHasOpenedUpdateLog] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -258,109 +258,18 @@ const App: React.FC = () => {
   }, [user, isAuthReady, hasOpenedUpdateLog]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      console.log("Auth state changed:", currentUser?.email);
-      setUser(currentUser);
-      const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
-      const adminEmails = ['darkfn1234567890@gmail.com', 'calabcoleman2187@gmail.com', 'raypolebobby15@gmail.com'];
-      const isSuperAdminUser = currentUser?.uid === superAdminUid;
-      const isDefaultAdmin = adminEmails.includes(currentUser?.email || '') && currentUser?.emailVerified;
-      
-      setIsSuperAdmin(isSuperAdminUser);
-      if (isSuperAdminUser || isDefaultAdmin) setIsAdmin(true);
-      // Admin status will be updated by the database listener
-      setIsAuthReady(true);
-      
-      if (currentUser) {
-        setIsAuthModalOpen(false);
-        
-        // Ensure user document exists
-        if (!isQuotaExceeded) {
-          try {
-            const userDocRef = doc(db, 'users', currentUser.uid);
-            const docSnap = await getDoc(userDocRef);
-            if (!docSnap.exists()) {
-              console.log("[App] Creating missing user document for:", currentUser.email);
-              await setDoc(userDocRef, {
-                uid: currentUser.uid,
-                email: currentUser.email || null,
-                displayName: currentUser.displayName || null,
-                photoURL: currentUser.photoURL || null,
-                role: (currentUser.uid === superAdminUid || isDefaultAdmin) ? 'admin' : 'user',
-                createdAt: serverTimestamp()
-              });
-            }
-          } catch (err) {
-            handleFirestoreError(err, OperationType.GET, 'users');
-          }
-        }
-      } else {
-        setFavorites([]);
-        localStorage.removeItem('chillzone_favorites');
-      }
-    });
-    return () => unsubscribe();
+     // Firebase removed - set auth ready locally
+     const adminEmails = ['darkfn1234567890@gmail.com', 'calabcoleman2187@gmail.com', 'raypolebobby15@gmail.com'];
+     const userEmail = 'darkfn1234567890@gmail.com'; // Hardcoded for preview
+     
+     setIsAuthReady(true);
+     setUser({ email: userEmail });
+     setIsAdmin(adminEmails.includes(userEmail));
+     setIsSuperAdmin(false);
   }, []);
 
   useEffect(() => {
-    if (!user || !isAuthReady || isQuotaExceeded) return;
-
-    const userDocRef = doc(db, 'users', user.uid);
-    const unsub = onSnapshot(userDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.customLogo) {
-          setCustomLogo(data.customLogo);
-          localStorage.setItem('chillzone_custom_logo', data.customLogo);
-        }
-        if (data.favorites) {
-          setFavorites(data.favorites);
-          localStorage.setItem('chillzone_favorites', JSON.stringify(data.favorites));
-        }
-        if (data.theme) {
-          localStorage.setItem('custom_theme_id', data.theme);
-          if (data.customThemes) {
-            localStorage.setItem('custom_themes', data.customThemes);
-          }
-          // Apply theme
-          const savedThemes = localStorage.getItem('custom_themes');
-          const customThemes = savedThemes ? JSON.parse(savedThemes) : { ...defaultThemes };
-          const activeTheme = customThemes[data.theme] || defaultThemes.chillzone;
-          
-          const root = document.documentElement;
-          root.style.setProperty('--bg', activeTheme.colors.bg);
-          root.style.setProperty('--text-primary', activeTheme.colors.textPrimary);
-          root.style.setProperty('--surface', activeTheme.colors.surface);
-          root.style.setProperty('--border', activeTheme.colors.border);
-          root.style.setProperty('--accent', activeTheme.colors.accent);
-          root.style.setProperty('--surface-hover', activeTheme.colors.surfaceHover);
-          
-          const hexToRgb = (hex: string) => {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 0, 0';
-          };
-          
-          const rgb = hexToRgb(activeTheme.colors.accent);
-          root.style.setProperty('--accent-glow', `rgba(${rgb}, 0.3)`);
-          root.style.setProperty('--accent-glow-dim', `rgba(${rgb}, 0.1)`);
-          root.dataset.theme = data.theme;
-        }
-        
-        // Update admin status based on role in database and super admin UID
-        const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
-        const adminEmails = ['darkfn1234567890@gmail.com', 'calabcoleman2187@gmail.com', 'raypolebobby15@gmail.com'];
-        const isSuperAdminUser = user.uid === superAdminUid;
-        const isDefaultAdmin = adminEmails.includes(user.email || '') && user.emailVerified;
-        const isAdminRole = ['admin', 'co-owner', 'owner'].includes(data.role || '');
-        
-        setIsSuperAdmin(isSuperAdminUser);
-        setIsAdmin(isSuperAdminUser || isDefaultAdmin || isAdminRole);
-      }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
-    });
-
-    return () => unsub();
+    if (!user || !isAuthReady || isQuotaExceededUI) return;
   }, [user, isAuthReady]);
 
   useEffect(() => {
@@ -465,15 +374,14 @@ const App: React.FC = () => {
   const handleUpdateLogo = (newLogoUrl: string) => {
     setCustomLogo(newLogoUrl);
     localStorage.setItem('chillzone_custom_logo', newLogoUrl);
-    
-    // Sync to Firebase if logged in
-    if (user && !isQuotaExceeded) {
-      updateDoc(doc(db, 'users', user.uid), {
-        customLogo: newLogoUrl
-      }).catch(err => {
-        handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
-      });
-    }
+  };
+
+  const logout = () => {
+    setUser(null);
+    setIsAdmin(false);
+    setIsSuperAdmin(false);
+    localStorage.removeItem('chillzone_favorites');
+    window.location.reload();
   };
 
   const handleOpenDetails = (item: LibraryItem, category: string) => {
@@ -497,15 +405,7 @@ const App: React.FC = () => {
       }
       
       localStorage.setItem('chillzone_favorites', JSON.stringify(newFavorites));
-      
-      // Sync to Firebase if logged in
-      if (user && !isQuotaExceeded) {
-        updateDoc(doc(db, 'users', user.uid), {
-          favorites: newFavorites
-        }).catch(err => {
-          handleFirestoreError(err, OperationType.UPDATE, `users/${user.uid}`);
-        });
-      }
+      // Sync to Firestore disabled for local storage approach
       
       return newFavorites;
     });

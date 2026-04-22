@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, Edit2, Save, AlertCircle, CheckCircle2, ShieldCheck, Users, Megaphone, Activity, Send, Check, Ban, UserCheck, Upload, Loader2, Database, Globe, Settings as SettingsIcon } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { db, auth, OperationType, handleFirestoreError, isQuotaExceeded } from '../firebase';
-import { collection, addDoc, query, orderBy, deleteDoc, doc, updateDoc, serverTimestamp, Timestamp, setDoc, where, getDocs, getDoc, limit, onSnapshot } from 'firebase/firestore';
 
 interface User {
   uid: string;
@@ -108,24 +106,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const unsubsRef = useRef<{ [key: string]: (() => void) | undefined }>({});
   const hasFetchedLocal = useRef<{ [key: string]: boolean }>({});
 
-  // Lazy persistent listeners for Firestore and Fetches for Local DB
   useEffect(() => {
-    // Local DB - Uploads
-    if (activeTab === 'manage_uploads' && !hasFetchedLocal.current.manage_uploads) {
-      setIsLoading(true);
-      fetch(`/api/db/uploads?t=${Date.now()}`, { cache: 'no-store' })
-        .then(res => res.json())
-        .then(data => {
-            setUploads(data);
-            hasFetchedLocal.current.manage_uploads = true;
-            setIsLoading(false);
-        })
-        .catch(err => {
-            console.error("Failed to fetch uploads:", err);
-            setIsLoading(false);
-        });
-    }
-
     // Local DB - Announcements
     if (activeTab === 'announcements' && !hasFetchedLocal.current.announcements) {
       setIsLoading(true);
@@ -156,14 +137,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
             console.error("Failed to fetch suggestions:", err);
             setIsLoading(false);
         });
-    }
-
-    // Firestore - Allowed Admins
-    if (activeTab === 'admins' && !isQuotaExceeded && !unsubsRef.current.admins) {
-      const q = query(collection(db, 'allowed_admins'), orderBy('createdAt', 'desc'), limit(100));
-      unsubsRef.current.admins = onSnapshot(q, (snapshot) => {
-        setAllowedAdmins(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AllowedAdmin[]);
-      }, (err) => handleFirestoreError(err, OperationType.LIST, 'allowed_admins'));
     }
 
     // Local DB - System Status
@@ -231,7 +204,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
         body: JSON.stringify({
           title: newTitle,
           content: newContent,
-          authorId: auth.currentUser?.uid,
+          authorId: 'admin',
           active: true
         })
       });
@@ -327,120 +300,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
     }
   };
 
-  const handleRemoveAllAdmins = async () => {
-    if (!window.confirm('Are you sure you want to remove all other admins and reset all user roles to "user"? This cannot be undone.')) return;
-    if (isQuotaExceeded) {
-      setError('Database quota exceeded.');
-      return;
-    }
-    try {
-      console.log('Starting admin removal...');
-      // 1. Clear allowed_admins
-      const adminsRef = collection(db, 'allowed_admins');
-      const adminSnapshot = await getDocs(adminsRef);
-      console.log(`Found ${adminSnapshot.docs.length} allowed admins to remove.`);
-      const deletePromises = adminSnapshot.docs.map(docSnap => deleteDoc(doc(db, 'allowed_admins', docSnap.id)));
-      await Promise.all(deletePromises);
-      setAllowedAdmins([]);
-      console.log('Allowed admins cleared.');
-
-      // 2. Reset all users to 'user' role except super admin
-      const usersRef = collection(db, 'users');
-      // Query only users with admin-related roles to save quota
-      const adminRoles = ['admin', 'co-owner', 'owner'];
-      const qUsers = query(usersRef, where('role', 'in', adminRoles), limit(10000));
-      const userSnapshot = await getDocs(qUsers);
-      console.log(`Found ${userSnapshot.docs.length} users with admin roles.`);
-      const superAdminUid = 'HfjrcUIslZPCvNI3fxiQJVK1ebB3';
-      const updatePromises = userSnapshot.docs
-        .filter(docSnap => docSnap.id !== superAdminUid)
-        .map(docSnap => {
-          console.log(`Demoting user: ${docSnap.data().email} (${docSnap.id})`);
-          return setDoc(doc(db, 'users', docSnap.id), { role: 'user' }, { merge: true });
-        });
-      await Promise.all(updatePromises);
-      console.log('Users demoted.');
-      
-      setSuccess('All other admins removed and roles reset successfully!');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      if (!String(err).includes('Quota limit exceeded') && !String(err).includes('Quota exceeded')) {
-        console.error('Error removing admins:', err);
-      }
-      setError('Failed to remove admins.');
-      handleFirestoreError(err, OperationType.UPDATE, 'users/allowed_admins');
-    }
-  };
-
-  const handleUpdateUserRole = async (uid: string, newRole: 'admin' | 'co-owner' | 'owner' | 'user' | 'donator' | 'tester') => {
-    if (isQuotaExceeded) return;
-    // Role updates still useful for admins
-    try {
-      console.log(`[AdminDashboard] Updating user ${uid} role to ${newRole}`);
-      await updateDoc(doc(db, 'users', uid), {
-        role: newRole
-      });
-      setSuccess(`User role updated to ${newRole} successfully!`);
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Failed to update user role.');
-      handleFirestoreError(err, OperationType.UPDATE, `users/${uid}`);
-    }
-  };
-
-  const handleAddAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAdminEmail.trim()) {
-      setError('Please provide an email address.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const email = newAdminEmail.trim().toLowerCase();
-      await setDoc(doc(db, 'allowed_admins', email), {
-        email: email,
-        addedBy: auth.currentUser?.uid,
-        createdAt: serverTimestamp()
-      });
-
-      // Update existing user role if they already have an account
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', email));
-      const querySnapshot = await getDocs(q);
-      const updatePromises = querySnapshot.docs
-        .map(docSnap => updateDoc(doc(db, 'users', docSnap.id), { role: 'admin' }));
-      await Promise.all(updatePromises);
-
-      setNewAdminEmail('');
-      setSuccess('Admin email added successfully!');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Failed to add admin email. Check console for details.');
-      handleFirestoreError(err, OperationType.CREATE, 'allowed_admins');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteAdmin = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'allowed_admins', id));
-      
-      // Update existing user role back to user
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', id.toLowerCase()));
-      const querySnapshot = await getDocs(q);
-      const updatePromises = querySnapshot.docs
-        .map(docSnap => updateDoc(doc(db, 'users', docSnap.id), { role: 'user' }));
-      await Promise.all(updatePromises);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `allowed_admins/${id}`);
-    }
-  };
+      // Role management and admin management functions disabled as they rely on Firestore.
 
   const toggleMaintenanceMode = async () => {
     const nextStatus = !isUpdating;
@@ -486,7 +346,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
         </button>
       </div>
       
-      {isQuotaExceeded && (
+      {false && (
          <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 m-6 rounded-xl flex items-center gap-3">
            <AlertCircle size={20} />
            <span>Firestore quota exceeded. Real-time data updates and some administrative actions are currently unavailable.</span>
