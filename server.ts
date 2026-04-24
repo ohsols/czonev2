@@ -83,7 +83,7 @@ app.use((req, res, next) => {
   const isApi = req.url.startsWith('/api');
   
   if (isApi) {
-    console.log(`[Server] ${new Date().toISOString()} API REQUEST: ${req.method} ${req.url}`);
+    console.log(`[Server] ${new Date().toISOString()} API REQUEST: ${req.method} ${req.path}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`);
   } else if (!isAsset && req.url !== '/' && !req.url.startsWith('/@') && req.method === 'GET') {
     console.log(`[Server] ${new Date().toISOString()} NAVIGATION: ${req.method} ${req.url}`);
     
@@ -121,6 +121,7 @@ app.get('/.well-known/discord', (req, res) => {
 
 // Local DB API Routes
 app.get('/api/db/uploads', (req, res) => {
+  console.log(`[DB] Matching GET /api/db/uploads`);
   const data = readDb('uploads');
   console.log(`[DB] GET uploads - returning ${data.length} items`);
   res.json(data);
@@ -475,7 +476,7 @@ app.get('/api/analytics/data', async (req, res) => {
 });
 
 // Final catch-all for unmatched API routes
-app.all('/api/*all', (req, res) => {
+app.all(/^\/api\/.*$/, (req, res) => {
   console.warn(`[Server] 404 NOT FOUND - API route match failed: ${req.method} ${req.url}`);
   res.status(404).json({ 
     error: 'API route not found', 
@@ -514,7 +515,7 @@ async function startServer() {
     app.use(express.static(distPath));
     
     // SPA fallback - only for non-API routes
-    app.get('*all', (req, res, next) => {
+    app.get(/^\/.*$/, (req, res, next) => {
       if (req.path.startsWith('/api')) {
         console.log(`[Server] API route fell through to SPA fallback: ${req.path}`);
         return next();
