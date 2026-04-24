@@ -146,22 +146,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
     });
     unsubsRef.current.admins = unsubAdmins;
 
-    // Local DB - System Status
-    if (activeTab === 'system' && !hasFetchedLocal.current.system) {
-      fetch('/api/db/system-status')
-        .then(res => res.json())
-        .then(data => {
-            setIsUpdating(data.updating === true);
-            hasFetchedLocal.current.system = true;
-        })
-        .catch(err => console.error("Failed to fetch system status:", err));
-    }
-    
+    // Firestore - System Status
+    const unsubSystem = onSnapshot(doc(db, 'system', 'status'), (snapshot) => {
+      if (snapshot.exists()) {
+        setIsUpdating(snapshot.data().updating === true);
+      }
+    });
+    unsubsRef.current.system = unsubSystem;
+
     // Cleanup
     return () => {
       unsubsRef.current.announcements?.();
       unsubsRef.current.suggestions?.();
       unsubsRef.current.admins?.();
+      unsubsRef.current.system?.();
     };
   }, [activeTab]);
 
@@ -332,20 +330,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
   const toggleMaintenanceMode = async () => {
     const nextStatus = !isUpdating;
     try {
-      const response = await fetch('/api/db/system-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          updating: nextStatus,
-          updatedAt: new Date().toISOString(),
-          updatedBy: auth.currentUser?.uid
-        })
-      });
-      if (response.ok) {
-        setIsUpdating(nextStatus);
-        setSuccess(`Maintenance mode ${nextStatus ? 'activated' : 'deactivated'}!`);
-        setTimeout(() => setSuccess(null), 3000);
-      }
+      await setDoc(doc(db, 'system', 'status'), {
+        updating: nextStatus,
+        updatedAt: serverTimestamp(),
+        updatedBy: auth.currentUser?.uid
+      }, { merge: true });
+      
+      setIsUpdating(nextStatus);
+      setSuccess(`Maintenance mode ${nextStatus ? 'activated' : 'deactivated'}!`);
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error(err);
       setError('Failed to toggle maintenance mode.');
@@ -830,6 +823,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose, isSuperAdmin, 
             </AnimatePresence>
           </div>
         )}
+
+        {activeTab === 'analytics' && <AnalyticsTab />}
       </div>
     </div>
   );

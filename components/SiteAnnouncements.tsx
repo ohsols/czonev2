@@ -15,21 +15,25 @@ export const SiteAnnouncements = () => {
   }, []);
 
   useEffect(() => {
-    const fetchAnnouncements = async () => {
-      try {
-        const res = await fetch(`/api/db/announcements?t=${Date.now()}`, { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          setAnnouncements(data.filter((a: any) => a.active !== false));
-        }
-      } catch (err) {
-        console.error("Failed to fetch announcements:", err);
-      }
-    };
+    // Real-time Firestore listener for announcements
+    const q = query(
+      collection(db, 'site_announcements'),
+      where('active', '==', true),
+      limit(5)
+    );
 
-    fetchAnnouncements();
-    const timer = setInterval(fetchAnnouncements, 30000); // 30s polling
-    return () => clearInterval(timer);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setAnnouncements(data);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'site_announcements');
+      console.error("Failed to fetch announcements:", err);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleDismiss = (id: string) => {

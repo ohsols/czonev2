@@ -1,9 +1,9 @@
 
 import { LibraryItem, StaffMember, PartnerItem, ProxyItem } from './types';
-import { MANGA } from './mangaData';
-import { MOVIES } from './movieData';
-import { TV_SHOWS } from './tvData';
-import { ANIME } from './animeData';
+import { MANGA } from './data/mangaData';
+import { MOVIES } from './data/movieData';
+import { TV_SHOWS } from './data/tvData';
+import { ANIME } from './data/animeData';
 
 const getSearchLink = (title: string) => `https://drive.google.com/drive/search?q=${encodeURIComponent(title)}`;
 const getPlaceholderImg = (title: string) => `https://placehold.co/600x900/1c1c1f/3f3f46/png?text=${encodeURIComponent(title.replace(/[:\s]/g, '+'))}&font=playfair-display`;
@@ -766,47 +766,54 @@ const generateLibrary = (keys: string[], category: 'movie' | 'anime' | 'manga' |
   }));
 };
 
-// Movies: Use keys from LINK_DB that aren't TV seasons
-// Categorize based on the structure of LINK_DB
-const ALL_DB_KEYS = Object.keys(LINK_DB);
+// Simplified extraction - merge static data with LINK_DB
+export const MOVIES_DATA: LibraryItem[] = [
+  ...MOVIES.map(movie => ({
+    t: movie.title,
+    l: movie.link,
+    img: movie.imageUrl,
+    year: parseInt(movie.year) || undefined,
+    genre: guessGenre(movie.title),
+    rating: guessRating(movie.title),
+    type: 'movie' as const
+  }))
+];
 
-const animeStartIndex = ALL_DB_KEYS.indexOf("Afro Samurai");
+export const ANIME_DATA: LibraryItem[] = [
+  ...ANIME.map(anime => ({
+    t: anime.title,
+    l: anime.link || '',
+    img: anime.imageUrl,
+    links: anime.links,
+    genre: guessGenre(anime.title),
+    rating: guessRating(anime.title),
+    type: 'anime' as const
+  }))
+];
 
-const ANIME_KEYS = ALL_DB_KEYS.slice(animeStartIndex);
+export const TV_DATA: LibraryItem[] = [
+  ...TV_SHOWS.map(tv => ({
+    t: tv.title,
+    l: tv.link,
+    img: tv.imageUrl,
+    links: tv.links,
+    genre: guessGenre(tv.title),
+    rating: guessRating(tv.title),
+    type: 'tv' as const
+  }))
+];
 
-export const MOVIES_DATA: LibraryItem[] = MOVIES.map(movie => ({
-  t: movie.title,
-  l: movie.link,
-  img: movie.imageUrl,
-  year: parseInt(movie.year) || undefined,
-  genre: guessGenre(movie.title),
-  rating: guessRating(movie.title)
-}));
-export const ANIME_DATA: LibraryItem[] = ANIME.map(anime => ({
-  t: anime.title,
-  l: anime.link || '',
-  img: anime.imageUrl,
-  links: anime.links,
-  genre: guessGenre(anime.title),
-  rating: guessRating(anime.title)
-}));
-export const TV_DATA: LibraryItem[] = TV_SHOWS.map(tv => ({
-  t: tv.title,
-  l: tv.link,
-  img: tv.imageUrl,
-  links: tv.links,
-  genre: guessGenre(tv.title),
-  rating: guessRating(tv.title)
-}));
-
-export const MANGA_DATA: LibraryItem[] = MANGA.map(manga => ({
-  t: manga.title,
-  l: manga.url,
-  img: manga.imageUrl,
-  year: parseInt(manga.year) || undefined,
-  genre: guessGenre(manga.title),
-  rating: guessRating(manga.title)
-}));
+export const MANGA_DATA: LibraryItem[] = [
+  ...MANGA.map(manga => ({
+    t: manga.title,
+    l: manga.url,
+    img: manga.imageUrl,
+    year: parseInt(manga.year) || undefined,
+    genre: guessGenre(manga.title),
+    rating: guessRating(manga.title),
+    type: 'manga' as const
+  }))
+];
 
 
 export const APPS_DATA: LibraryItem[] = [
@@ -879,7 +886,7 @@ export const PARTNERS_DATA: PartnerItem[] = [
       { name: "Website", url: "https://bloxcraft-ubg.pages.dev" }
     ],
     discord: "https://discord.gg/sqPFYEsz8F",
-    avatar: "https://cdn.discordapp.com/attachments/1495941454869172314/1496238059329552446/bloxcraft_transparent.png?ex=69e927c8&is=69e7d648&hm=81a190fe39d77a128281ba1f9ea1061a7e1de55c1cf693fed698a9c045d81854&"
+    avatar: "https://bloxcraft-ubg.pages.dev/bloxcraft_transparent.png"
   },
   { 
     name: "カービィアーケード", 

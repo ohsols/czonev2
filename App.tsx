@@ -856,8 +856,8 @@ const App: React.FC = () => {
                         </div>
 
                         {/* Recently Added Content */}
-                        {uploads.length > 0 && (
-                          <div className="mt-8">
+                        <div className="space-y-16">
+                          {uploads.length > 0 && (
                             <LibrarySection 
                                 title={t('Fresh Drops')} 
                                 items={uploads.slice(0, 10).map((u: any) => ({ 
@@ -871,8 +871,17 @@ const App: React.FC = () => {
                                 onOpenDetails={handleOpenDetails} 
                                 showSearch={false} 
                             />
-                          </div>
-                        )}
+                          )}
+
+                          <LibrarySection 
+                              title={t('New Releases')} 
+                              items={MOVIES_DATA.slice(0, 10)} 
+                              category="movie" 
+                              searchQuery="" 
+                              onOpenDetails={handleOpenDetails} 
+                              showSearch={false} 
+                          />
+                        </div>
 
                         {/* Featured Staff Section */}
                         <div className="bg-bg rounded-[50px] p-12 border border-surface-hover">

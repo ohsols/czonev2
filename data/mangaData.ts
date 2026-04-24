@@ -1,4 +1,4 @@
-import { Manga } from './types';
+import { Manga } from '../types';
 
 export const MANGA: Manga[] = [
     {

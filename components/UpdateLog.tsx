@@ -9,6 +9,11 @@ interface UpdateLogProps {
 
 const UPDATES = [
   {
+    version: "2.1",
+    date: "2026-04-22",
+    changes: ["Added Deadpool and Wolverine & More New Movies", "Synced Website with Massive Link Database"]
+  },
+  {
     version: "2.0",
     date: "2026-04-16",
     changes: ["Fixed Update Logs"]

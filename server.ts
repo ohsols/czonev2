@@ -11,6 +11,7 @@ import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import YTMusic from 'ytmusic-api';
 import multer from 'multer';
 import fs from 'fs';
+import https from 'https';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,8 +84,19 @@ app.use((req, res, next) => {
   
   if (isApi) {
     console.log(`[Server] ${new Date().toISOString()} API REQUEST: ${req.method} ${req.url}`);
-  } else if (!isAsset && req.url !== '/' && !req.url.startsWith('/@')) {
+  } else if (!isAsset && req.url !== '/' && !req.url.startsWith('/@') && req.method === 'GET') {
     console.log(`[Server] ${new Date().toISOString()} NAVIGATION: ${req.method} ${req.url}`);
+    
+    // Simple Local Analytics tracking
+    try {
+      const analytics = readSingleDb('analytics');
+      const date = new Date().toISOString().split('T')[0];
+      if (!analytics[date]) analytics[date] = 0;
+      analytics[date]++;
+      writeSingleDb('analytics', analytics);
+    } catch (e) {
+      console.warn('[Analytics] Failed to track page view:', e);
+    }
   }
   next();
 });
@@ -215,8 +227,6 @@ app.patch('/api/db/suggestions/:id', (req, res) => {
     res.status(404).json({ error: 'Suggestion not found' });
   }
 });
-
-import https from 'https';
 
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false
@@ -425,31 +435,38 @@ app.use('/api/music/stream', async (req, res) => {
 app.get('/api/analytics/data', async (req, res) => {
   try {
     const propertyId = '527976762';
-    if (!process.env.GA4_SERVICE_ACCOUNT_JSON) {
-        return res.status(500).json({ error: 'GA4 credentials not configured' });
+    
+    // Check if GA4 is configured
+    if (process.env.GA4_SERVICE_ACCOUNT_JSON) {
+      try {
+        const credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
+        const analyticsDataClient = new BetaAnalyticsDataClient({
+            credentials
+        });
+
+        const [response] = await analyticsDataClient.runReport({
+          property: `properties/${propertyId}`,
+          dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+          metrics: [{ name: 'activeUsers' }],
+          dimensions: [{ name: 'date' }],
+        });
+
+        return res.json(response);
+      } catch (e) {
+        console.error('GA4 configuration error, falling back to local analytics:', e);
+      }
     }
     
-    let credentials;
-    try {
-      credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_JSON);
-    } catch (e) {
-      return res.status(500).json({ error: 'Invalid GA4 credentials format' });
-    }
+    // Local Analytics Fallback
+    const localData = readSingleDb('analytics');
+    const rows = Object.entries(localData).map(([date, count]) => ({
+      dimensionValues: [{ value: date.replace(/-/g, '') }],
+      metricValues: [{ value: String(count) }]
+    })).sort((a: any, b: any) => a.dimensionValues[0].value.localeCompare(b.dimensionValues[0].value));
 
-    const analyticsDataClient = new BetaAnalyticsDataClient({
-        credentials
-    });
-
-    const [response] = await analyticsDataClient.runReport({
-      property: `properties/${propertyId}`,
-      dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
-      metrics: [{ name: 'activeUsers' }],
-      dimensions: [{ name: 'date' }],
-    });
-
-    res.json(response);
+    res.json({ rows });
   } catch (error) {
-    console.error('GA4 error:', error);
+    console.error('Analytics total failure:', error);
     res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
