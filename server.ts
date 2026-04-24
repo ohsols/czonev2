@@ -101,6 +101,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve uploaded files
+app.use('/uploads', express.static(uploadDir));
+
 // API ROUTES START
 // --------------------------------------------------------------------------
 

@@ -836,26 +836,24 @@ const AnalyticsTab = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const apiUrl = (import.meta as any).env?.VITE_API_URL || window.location.origin;
-        console.log('Fetching analytics from:', apiUrl);
-        fetch(`${apiUrl}/api/analytics/data`)
+        setLoading(true);
+        fetch(`/api/analytics/data`)
             .then(res => {
-                console.log('Response status:', res.status);
                 if (!res.ok) throw new Error('Failed to fetch analytics');
                 return res.json();
             })
             .then(data => {
-                // Map GA4 data to a format Recharts can use
-                const formattedData = data.rows?.map((row: any) => ({
+                // Map GA4/Local data to a format Recharts can use
+                const formattedData = (data.rows || []).map((row: any) => ({
                     date: row.dimensionValues[0].value.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
                     activeUsers: parseInt(row.metricValues[0].value, 10)
-                })).sort((a: any, b: any) => a.date.localeCompare(b.date)) || [];
+                })).sort((a: any, b: any) => a.date.localeCompare(b.date));
                 
                 setData(formattedData);
                 setLoading(false);
             })
             .catch(err => {
-                console.error(err);
+                console.error('Analytics Fetch Error:', err);
                 setError('Failed to load analytics data.');
                 setLoading(false);
             });
